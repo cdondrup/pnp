@@ -1,0 +1,3 @@
+distances:
+  close: 1.0
+  far: 2.0
