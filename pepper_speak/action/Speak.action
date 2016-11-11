@@ -1,0 +1,6 @@
+string id
+string text
+string at
+---
+pnp_msgs/ActionResult[] result
+---
