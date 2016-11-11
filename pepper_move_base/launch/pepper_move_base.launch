@@ -1,0 +1,8 @@
+<launch>
+  <arg name="config_file" default="$(find pepper_move_base)/conf/distances.yaml"/>
+
+  <node pkg="pepper_move_base" type="move_base_emulator.py" name="move_base" output="screen" respawn="true"/>
+  <node pkg="pepper_move_base" type="qualitative_move_base.py" name="goto" output="screen" respawn="true">
+    <param name="config_file" value="$(arg config_file)" type="string"/>
+  </node>
+</launch>
