@@ -63,24 +63,31 @@ class QualitativeDistancePublisher(object):
             if len(tp) != len(cond[1:]):
                 rospy.logerr("Fact '%s' should have %s parameters but has only %s as parsed from: '%s'" % (cond[0], len(tp), len(cond[1:])))
                 return
+            
+            if truth_value:
+                req.knowledge.append(KnowledgeItem(
+                    knowledge_type=KnowledgeItem.INSTANCE,
+                    instance_type="id",
+                    instance_name=cond[1]
+                ))
+    
+                self.__call_service(
+                    srv_name,
+                    KnowledgeUpdateServiceArray,
+                    req
+                )
+            
             req.knowledge.append(KnowledgeItem(
                 knowledge_type=KnowledgeItem.FACT,
                 attribute_name=cond[0],
                 values=[KeyValue(key=str(k.key), value=str(v)) for k,v in zip(tp, cond[1:])]
             ))
 
-        while not rospy.is_shutdown():
-            try:
-                self.__call_service(
-                    srv_name,
-                    KnowledgeUpdateServiceArray,
-                    req
-                )
-            except rospy.ROSInterruptException:
-                rospy.logerr("Communication with '%s' interrupted. Retrying." % srv_name)
-                rospy.sleep(1.)
-            else:
-                return
+            self.__call_service(
+                srv_name,
+                KnowledgeUpdateServiceArray,
+                req
+            )
                 
     def __call_service(self, srv_name, srv_type, req):
          while not rospy.is_shutdown():
