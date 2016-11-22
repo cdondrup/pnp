@@ -1,0 +1,9 @@
+engage:
+  predicate: "engaged"
+  parameters:
+    - "iid_0"
+    - "hello"
+disengage:
+  predicate: "free_interactant_id"
+  parameters:
+    - "iid_0"
