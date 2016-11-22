@@ -17,10 +17,7 @@ class PlanningWorldState(object):
     
     def __init__(self, name):
         rospy.loginfo("Starting %s ..." % name)
-        self.__last_request = {
-            0: KnowledgeUpdateServiceArrayRequest(),
-            1: KnowledgeUpdateServiceArrayRequest()
-        }
+        self.__last_request = {}
         self.people = set([])
         self.predicate = rospy.get_param("~distance_predicate", "robot_distance")
         self.__update_srv_name = rospy.get_param("~update_srv_name","/kcl_rosplan/update_knowledge_base_array")
@@ -28,12 +25,15 @@ class PlanningWorldState(object):
         self.__get_instances_srv_name = rospy.get_param("~get_instances_srv_name", "/kcl_rosplan/get_current_instances")
         with open(rospy.get_param("~config_file"),'r') as f:        
             config = yaml.load(f)
-        print config
         rospy.loginfo("Inserting static instances.")
         self.update_knowledgebase(instances=self._create_instances(config["static_instances"]))
         self.subscribers = []
         for inputs in config["inputs"]:
             rospy.loginfo("Subsribing to '%s'." % inputs["topic"])
+            self.__last_request[inputs["topic"]] = {
+                0: KnowledgeUpdateServiceArrayRequest(),
+                1: KnowledgeUpdateServiceArrayRequest()
+            }
             self.subscribers.append(
                 rospy.Subscriber(
                     name=inputs["topic"], 
@@ -55,7 +55,7 @@ class PlanningWorldState(object):
             try:
                 instances.extend(self._create_instances(config["data"]["instances"], data))
             except KeyError:
-                rospy.loginfo("No instances to be created from message")
+                rospy.logdebug("No instances to be created from message")
             
             for p in config["data"]["predicates"].items():
                 arg = []
@@ -75,8 +75,8 @@ class PlanningWorldState(object):
                     else:
                         false_predicates.append((p[0],y))
             
-        self.update_knowledgebase(predicates=true_predicates, instances=instances)
-        self.update_knowledgebase(predicates=false_predicates, truth_value=0)
+        self.update_knowledgebase(key=config["topic"], predicates=true_predicates, instances=instances)
+        self.update_knowledgebase(key=config["topic"], predicates=false_predicates, truth_value=0)
         self.decay(instances)
         
     def _create_instances(self, data, msg=None):
@@ -98,7 +98,7 @@ class PlanningWorldState(object):
                 res.append(str(a["value"]))
         return tuple(res)
         
-    def update_knowledgebase(self, predicates=None, instances=None, truth_value=1):
+    def update_knowledgebase(self, key=None, predicates=None, instances=None, truth_value=1):
         """update the knowledge base.
         :param predicate: The condition as a string taken from the PNP.
         :param truth_value: (int) -1 (unknown), 0 (false), 1 (true)
@@ -134,13 +134,20 @@ class PlanningWorldState(object):
                 ))
     
         if req.knowledge:
-            if not self.__compare_knowledge_items(self.__last_request[truth_value].knowledge, req.knowledge):
+            try:
+                if not self.__compare_knowledge_items(self.__last_request[key][truth_value].knowledge, req.knowledge):
+                    self.__call_service(
+                        self.__update_srv_name,
+                        KnowledgeUpdateServiceArray,
+                        req
+                    )
+                self.__last_request[key][truth_value] = req
+            except KeyError:
                 self.__call_service(
                     self.__update_srv_name,
                     KnowledgeUpdateServiceArray,
                     req
                 )
-            self.__last_request[truth_value] = req
                     
     def __call_service(self, srv_name, srv_type, req):
         while not rospy.is_shutdown():
@@ -177,7 +184,8 @@ class PlanningWorldState(object):
             for to_del in db - current_instances:
                 false_instances.append((i,(to_del,)))
         
-        self.update_knowledgebase(instances=false_instances, truth_value=0)
+        if false_instances:
+            self.update_knowledgebase(instances=false_instances, truth_value=0)
         
     def __compare_knowledge_items(self, k1, k2):
         if len(k1) != len(k2): return False
