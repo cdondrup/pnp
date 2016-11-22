@@ -3,16 +3,16 @@
 
 
 import rospy
-from nao_interaction_msgs.msg import PersonDetectedArray
+import rostopic
 from rosplan_knowledge_msgs.srv import KnowledgeUpdateServiceArray, KnowledgeUpdateServiceArrayRequest
 from rosplan_knowledge_msgs.msg import KnowledgeItem
 from diagnostic_msgs.msg import KeyValue
-from rosplan_knowledge_msgs.srv  import GetDomainPredicateDetailsService
+from rosplan_knowledge_msgs.srv import GetDomainPredicateDetailsService, GetInstanceService
 import yaml
 from operator import attrgetter
 
 
-class QualitativeDistancePublisher(object):
+class PlanningWorldState(object):
     __tp = {}
     
     def __init__(self, name):
@@ -25,62 +25,77 @@ class QualitativeDistancePublisher(object):
         self.predicate = rospy.get_param("~distance_predicate", "robot_distance")
         self.__update_srv_name = rospy.get_param("~update_srv_name","/kcl_rosplan/update_knowledge_base_array")
         self.__get_details_srv_name = rospy.get_param("~get_details_srv_name", "/kcl_rosplan/get_domain_predicate_details")
-        with open(rospy.get_param("~distance_config_file"),'r') as f:        
-            self.distance_config = yaml.load(f)
-        print self.distance_config
-        with open(rospy.get_param("~parsing_config_file"),'r') as f:        
-            self.parsing_config = yaml.load(f)
-        print self.parsing_config
-        rospy.Subscriber("/naoqi_driver_node/people_detected", PersonDetectedArray, self.callback)
+        self.__get_instances_srv_name = rospy.get_param("~get_instances_srv_name", "/kcl_rosplan/get_current_instances")
+        with open(rospy.get_param("~config_file"),'r') as f:        
+            config = yaml.load(f)
+        print config
+        rospy.loginfo("Inserting static instances.")
+        self.update_knowledgebase(instances=self._create_instances(config["static_instances"]))
+        self.subscribers = []
+        for inputs in config["inputs"]:
+            rospy.loginfo("Subsribing to '%s'." % inputs["topic"])
+            self.subscribers.append(
+                rospy.Subscriber(
+                    name=inputs["topic"], 
+                    data_class=rostopic.get_topic_class(inputs["topic"], blocking=True)[0], 
+                    callback=self.callback,
+                    callback_args=inputs
+                )
+            )
         rospy.loginfo("... done")
         
-    def callback(self, msg):
-        people = []
-        for person in msg.person_array:
-            true_predicates = []
-            false_predicates = []
-            instances = []
-            for i in self.parsing_config["instances"].items():
-                arg = tuple(a["format"]%str(attrgetter(a["attribute"])(person)) for a in i[1])                
-                instances.append((i[0],arg))
+    def callback(self, msg, config):
+        data_field = attrgetter(config["base_attribute"])(msg) if config["base_attribute"] != "" else msg
+        data_field = [data_field] if not isinstance(data_field, list) else data_field
+        
+        true_predicates = []
+        false_predicates = []
+        instances = []
+        for data in data_field:
+            try:
+                instances.extend(self._create_instances(config["data"]["instances"], data))
+            except KeyError:
+                rospy.loginfo("No instances to be created from message")
             
-            for p in self.parsing_config["predicates"].items():
-                print p
+            for p in config["data"]["predicates"].items():
                 arg = []
                 tv = []
-                if isinstance(p[1], dict):
-                    arg.append(self.__get_arguments(p[1]["arguments"], person))
-                    tv.append(p[1]["truth_value"])
-                elif isinstance(p[1], list):
-                    for element in p[1]:
-                        arg.append(self.__get_arguments(element["arguments"], person))
-                        tv.append(element["truth_value"])
+                argument_list = [p[1]] if not isinstance(p[1],list) else p[1]
+                for element in argument_list:
+                    try:
+                        arg.append(self.__get_arguments(element["arguments"], data))
+                    except KeyError:
+                        arg.append(tuple())
+                    tv.append(element["truth_value"])
                         
                 for x, y in zip(tv, arg):
-                    truth_value = eval(x["comparison"].replace("$attribute", str(attrgetter(x["attribute"])(person))))
+                    truth_value = eval(x["comparison"].replace("$attribute", str(attrgetter(x["attribute"])(data))))
                     if truth_value:                
                         true_predicates.append((p[0],y))
                     else:
                         false_predicates.append((p[0],y))
             
-#            for dist in self.distance_config["distances"]:
-#                if person.person.distance > float(dist["min"]) and person.person.distance < float(dist["max"]):
-#                    true_predicates.append((self.predicate, ("id_"+str(person.id) ,dist["name"])))
-#                    continue
-#                false_predicates.append((self.predicate, ("id_"+str(person.id) ,dist["name"])))
-            
         self.update_knowledgebase(predicates=true_predicates, instances=instances)
         self.update_knowledgebase(predicates=false_predicates, truth_value=0)
-        for x in people: self.people.add(x)
-        self.decay(people)
+        self.decay(instances)
         
-    def __get_arguments(self, arguments, person):
+    def _create_instances(self, data, msg=None):
+        res = []
+        for i in data.items():
+            argument_list = [i[1]] if not isinstance(i[1],list) else i[1]
+            for element in argument_list:
+                res.append((i[0],self.__get_arguments(element["arguments"], msg)))
+        return res
+        
+    def __get_arguments(self, arguments, data=None):
         res = []        
         for a in arguments:
             try:
-                res.append(a["format"]%str(attrgetter(a["attribute"])(person)))
+                if data == None:
+                    raise KeyError
+                res.append(a["format"]%str(attrgetter(a["attribute"])(data)))
             except KeyError:
-                res.append(a["format"]%str(a["value"]))
+                res.append(str(a["value"]))
         return tuple(res)
         
     def update_knowledgebase(self, predicates=None, instances=None, truth_value=1):
@@ -94,7 +109,7 @@ class QualitativeDistancePublisher(object):
         if instances != None:
             instances = [instances] if not isinstance(instances,list) else instances
             for i in instances:
-                rospy.loginfo("Updating %s %s" % (str(i), str(truth_value)))
+                rospy.logdebug("Updating %s %s" % (str(i), str(truth_value)))
                 for n in i[1]:
                     req.knowledge.append(KnowledgeItem(
                         knowledge_type=KnowledgeItem.INSTANCE,
@@ -105,7 +120,7 @@ class QualitativeDistancePublisher(object):
         if predicates != None:
             predicates = [predicates] if not isinstance(predicates,list) else predicates
             for p in predicates:
-                rospy.loginfo("Updating %s %s" % (str(p), str(truth_value)))
+                rospy.logdebug("Updating %s %s" % (str(p), str(truth_value)))
                 if not p[0] in self.__tp:
                     self.__tp[p[0]] = self._get_predicate_details(p[0]).predicate.typed_parameters
                 if len(self.__tp[p[0]]) != len(p[1]):
@@ -128,7 +143,6 @@ class QualitativeDistancePublisher(object):
             self.__last_request[truth_value] = req
                     
     def __call_service(self, srv_name, srv_type, req):
-        print "CALLING SERVICE"
         while not rospy.is_shutdown():
             try:
                 s = rospy.ServiceProxy(
@@ -149,12 +163,20 @@ class QualitativeDistancePublisher(object):
             name
         )
 
-    def decay(self, people):
+    def decay(self, instances):
+        instance_types = set()
+        current_instances = set()
+
+        for x in instances: 
+            instance_types.add(x[0])
+            current_instances.add(x[1][0])
         false_instances = []
-        for p in set(self.people)-set(people):
-            self.people.remove(p)
-            for dist in self.distance_config["distances"]:
-                false_instances.append(("id", ("id_"+str(p),)))
+
+        for i in instance_types:
+            db = set(self.__call_service(self.__get_instances_srv_name, GetInstanceService, i).instances)
+            for to_del in db - current_instances:
+                false_instances.append((i,(to_del,)))
+        
         self.update_knowledgebase(instances=false_instances, truth_value=0)
         
     def __compare_knowledge_items(self, k1, k2):
@@ -164,7 +186,7 @@ class QualitativeDistancePublisher(object):
         return True
         
 if __name__ == "__main__":
-    rospy.init_node("qualitative_distance")
-    q = QualitativeDistancePublisher(rospy.get_name())
+    rospy.init_node("planning_world_state_manager")
+    PlanningWorldState(rospy.get_name())
     rospy.spin()
 

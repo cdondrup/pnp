@@ -5,4 +5,5 @@
   <node pkg="pepper_move_base" type="qualitative_move_base.py" name="goto" output="screen" respawn="true">
     <param name="config_file" value="$(arg config_file)" type="string"/>
   </node>
+  <node pkg="pepper_move_base" type="track_person.py" name="track_person" output="screen" respawn="true"/>
 </launch>

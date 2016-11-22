@@ -1,14 +1,18 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(pepper_planning_launch)
+project(pepper_engage_human)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  pepper_check_human_exists
-  pepper_move_base
-  pepper_world_state
-  pepper_speak
+  actionlib
+  actionlib_msgs
+  message_generation
+  message_runtime
+  pnp_msgs
+  pnp_ros
+  rospy
+  std_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -59,17 +63,20 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+add_action_files(
+  FILES
+  FindInteractant.action
+  EngageHuman.action
+  TerminateInteraction.action
+)
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  actionlib_msgs
+  pnp_msgs
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -102,8 +109,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES pepper_planning_launch
-#  CATKIN_DEPENDS pepper_check_human_exists pepper_move_base pepper_world_state pepper_speak
+#  LIBRARIES pepper_engage_human
+#  CATKIN_DEPENDS actionlib actionlib_msgs message_generation message_runtime pnp_msgs pnp_ros rospy std_msgs
 #  DEPENDS system_lib
 )
 
@@ -119,24 +126,24 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(pepper_planning_launch
-#   src/${PROJECT_NAME}/pepper_planning_launch.cpp
+# add_library(pepper_engage_human
+#   src/${PROJECT_NAME}/pepper_engage_human.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(pepper_planning_launch ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(pepper_engage_human ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(pepper_planning_launch_node src/pepper_planning_launch_node.cpp)
+# add_executable(pepper_engage_human_node src/pepper_engage_human_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(pepper_planning_launch_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(pepper_engage_human_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(pepper_planning_launch_node
+# target_link_libraries(pepper_engage_human_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -155,7 +162,7 @@ include_directories(
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS pepper_planning_launch pepper_planning_launch_node
+# install(TARGETS pepper_engage_human pepper_engage_human_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -180,7 +187,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_pepper_planning_launch.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_pepper_engage_human.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

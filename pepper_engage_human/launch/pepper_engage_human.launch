@@ -1,0 +1,7 @@
+<launch>
+
+  <node name="engage_human" pkg="pepper_engage_human" type="engage_human.py" output="screen" respawn="true"/>
+  <node name="find_interactant" pkg="pepper_engage_human" type="find_interactant.py" output="screen" respawn="true"/>
+  <node name="terminate_interaction" pkg="pepper_engage_human" type="terminate_interaction.py" output="screen" respawn="true"/>
+
+</launch>

@@ -1,0 +1,111 @@
+static_instances:
+  distance:
+    - arguments:
+      - value: "close"
+    - arguments:
+      - value: "far"
+  text:
+    - arguments:
+      - value: "hello"
+  battery_level:
+    - arguments:
+      - value: "critical"
+    - arguments:
+      - value: "low"
+    - arguments:
+      - value: "medium"
+    - arguments:
+      - value: "high"
+    - arguments:
+      - value: "full"
+  interactant_id:
+    - arguments:
+      - value: "iid_0"
+inputs:
+  - topic: "/naoqi_driver_node/people_detected"
+    base_attribute: "person_array"
+    data:
+      instances:
+        id: 
+          arguments:
+            - format: "id_%s"
+              attribute: "id"
+      predicates:
+        face_detected:
+          arguments:
+            - format: "id_%s"
+              attribute: "id"
+          truth_value:
+            attribute: "person.face_detected"
+            comparison: "$attribute == True"
+        is_waving:
+          arguments:
+            - format: "id_%s"
+              attribute: "id"
+          truth_value:
+            attribute: "person.is_waving"
+            comparison: "$attribute == True"
+        looking_at_robot:
+          arguments:
+            - format: "id_%s"
+              attribute: "id"
+          truth_value:
+            attribute: "gaze.looking_at_robot"
+            comparison: "$attribute == True"
+        robot_distance:
+          - arguments:
+            - format: "id_%s"
+              attribute: "id"
+            - value: "close"
+            truth_value:
+              attribute: "person.distance"
+              comparison: "$attribute > 0.0 and $attribute < 1.0"
+          - arguments:
+            - format: "id_%s"
+              attribute: "id"
+            - value: "far"
+            truth_value:
+              attribute: "person.distance"
+              comparison: "$attribute >= 1.0"
+  - topic: "/naoqi_driver_node/battery"
+    base_attribute: ""
+    data:
+      predicates:
+        charging:
+          truth_value:
+            attribute: "charging"
+            comparison: "$attribute == True"
+        hatch_closed:
+          truth_value:
+            attribute: "hatch_open"
+            comparison: "$attribute == False"
+        hatch_open:
+          truth_value:
+            attribute: "hatch_open"
+            comparison: "$attribute == True"
+        battery:
+          - arguments:
+            - value: "critical"
+            truth_value:
+              attribute: "charge"
+              comparison: "$attribute < 10.0"
+          - arguments:
+            - value: "low"
+            truth_value:
+              attribute: "charge"
+              comparison: "$attribute >= 10.0 and $attribute < 25.0"
+          - arguments:
+            - value: "medium"
+            truth_value:
+              attribute: "charge"
+              comparison: "$attribute >= 25.0 and $attribute < 75.0"
+          - arguments:
+            - value: "high"
+            truth_value:
+              attribute: "charge"
+              comparison: "$attribute >= 75.0 and $attribute < 95.0"
+          - arguments:
+            - value: "full"
+            truth_value:
+              attribute: "charge"
+              comparison: "$attribute >= 95.0"
