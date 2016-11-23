@@ -37,7 +37,8 @@ class GoalServer(object):
         cnt = 0
         while self.client.send_goal_and_wait(PlanGoal()) != GoalStatus.SUCCEEDED \
             and cnt < tries \
-            and not self._as.is_preempt_requested():
+            and not self._as.is_preempt_requested() \
+            and not rospy.is_shutdown():
             self._as.publish_feedback(GoalServerFeedback(cnt))
             rospy.sleep(goal.timeout)
             cnt += 1
