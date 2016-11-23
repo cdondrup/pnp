@@ -1,0 +1,8 @@
+engage:
+  topic: "/goal_server/engage"
+  goal: "engaged__iid_0__hello"
+  precondition: "free_interactant_id__iid_0"
+  probability: 1.0
+  parameters:
+    - 0
+    - 0.5

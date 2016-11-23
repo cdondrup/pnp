@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
+import rospy
+import rostopic
+import roslib
+import yaml
+from actionlib import SimpleActionClient
+from rosplan_knowledge_msgs.srv import KnowledgeQueryService, KnowledgeQueryServiceRequest
+from rosplan_knowledge_msgs.msg import KnowledgeItem
+from rosplan_knowledge_msgs.srv  import GetDomainPredicateDetailsService
+from diagnostic_msgs.msg import KeyValue
+from nao_interaction_msgs.srv import SetBreathEnabled, SetBreathEnabledRequest
+from collections import OrderedDict
+import numpy as np
+
+CLIENT = "client"
+GOAL = "goal"
+ACTIONGOAL = "actiongoal"
+PRECONDITION = "precondition"
+
+
+class PepperController(object):
+    def __init__(self, name):
+        rospy.loginfo("Starting %s ..." % name)
+        with open(rospy.get_param("~config_file"), 'r') as f:
+            config = yaml.load(f)
+        print config
+        self.clients = OrderedDict()
+        self.client_probabilities = []
+        for k, v in config.items():
+            rospy.loginfo("Creating '%s' client" % v["topic"])
+            self.clients[k] = {
+                CLIENT: SimpleActionClient(v["topic"], self.get_action_type(v["topic"])),
+                GOAL: v["goal"],
+                ACTIONGOAL: self.get_goal_type(v["topic"])(*v["parameters"]),
+                PRECONDITION: v["precondition"]
+            }
+            rospy.loginfo("Waiting for '%s' server" % v["topic"])
+            self.clients[k][CLIENT].wait_for_server()
+            self.client_probabilities.append(v["probability"])
+            rospy.loginfo("Connected to '%s' server" % v["topic"])
+        rospy.loginfo("... done")
+        
+    def get_goal_type(self, action_name):
+        action_name = action_name[1:] if action_name[0] == "/" else action_name
+        topic_type = rostopic._get_topic_type("/%s/goal" % action_name)[0]
+        # remove "Action" string from goal type
+        assert("Action" in topic_type)
+        return roslib.message.get_message_class(topic_type[:-10]+"Goal")
+
+    def get_action_type(self, action_name):
+        action_name = action_name[1:] if action_name[0] == "/" else action_name
+        topic_type = rostopic._get_topic_type("/%s/goal" % action_name)[0]
+        # remove "Goal" string from action type
+        assert("Goal" in topic_type)
+        return roslib.message.get_message_class(topic_type[:-4])
+    
+    def _get_predicate_details(self, name):
+        srv_name = "/kcl_rosplan/get_domain_predicate_details"
+        while not rospy.is_shutdown():
+            try:
+                return self.__call_service(
+                    srv_name,
+                    GetDomainPredicateDetailsService,
+                    name
+                )
+            except rospy.ROSInterruptException:
+                rospy.logerr("Communication with '%s' interrupted. Retrying." % srv_name)
+                rospy.sleep(1.)
+        
+    def query_knowledgbase(self, predicate):
+        """querry the knowledge base.
+        :param predicate: The condition as a string taken from the PNP.
+        :return (int) -1 (unknown), 0 (false), or 1 (true)
+        """
+        cond = predicate.split("__")
+        srv_name = "/kcl_rosplan/query_knowledge_base"
+        tp = self._get_predicate_details(cond[0]).predicate.typed_parameters
+        if len(tp) != len(cond[1:]):
+            rospy.logerr("Fact '%s' should have %s parameters but has only %s as parsed from: '%s'" % (cond[0], len(tp), len(cond[1:])))
+            return
+        req = KnowledgeQueryServiceRequest()
+        req.knowledge.append(
+            KnowledgeItem(
+                knowledge_type=KnowledgeItem.FACT,
+                attribute_name=cond[0],
+                values=[KeyValue(key=str(k.key), value=str(v)) for k,v in zip(tp, cond[1:])]
+            )
+        )
+        while not rospy.is_shutdown():
+            try:
+                r = self.__call_service(
+                    srv_name,
+                    KnowledgeQueryService,
+                    req
+                )
+            except rospy.ROSInterruptException:
+                rospy.logerr("Communication with '%s' interrupted. Retrying." % srv_name)
+                rospy.sleep(1.)
+            else:
+                return 1 if r.all_true else 0
+                
+    def __call_service(self, srv_name, srv_type, req):
+         while not rospy.is_shutdown():
+            try:
+                s = rospy.ServiceProxy(
+                    srv_name,
+                    srv_type
+                )
+                s.wait_for_service(timeout=1.)
+            except rospy.ROSException:
+                rospy.logwarn("Could not communicate with '%s' service. Retrying in 1 second." % srv_name)
+                rospy.sleep(1.)
+            else:
+                return s(req)
+        
+    def spin(self):
+        self.__call_service("/naoqi_driver/set_breath_enabled", SetBreathEnabled, SetBreathEnabledRequest(SetBreathEnabledRequest.ARMS, True))
+        while not rospy.is_shutdown():
+            action = np.random.choice(self.clients.keys(), p=self.client_probabilities)
+            rospy.loginfo("Chose '%s' for execution" % action)
+            rospy.loginfo("Checking precondition")
+            while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][PRECONDITION]):
+                rospy.sleep(1.0)
+            rospy.loginfo("Starting execution of '%s'" % action)
+            self.clients[action][CLIENT].send_goal_and_wait(self.clients[action][ACTIONGOAL])
+            while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][GOAL]):
+                rospy.sleep(1.0)
+            rospy.loginfo("Goal '%s' achieved" % self.clients[action][GOAL])
+
+
+if __name__ == "__main__":
+    rospy.init_node("pepper_controller")
+    p = PepperController(rospy.get_name())
+    p.spin()
+
