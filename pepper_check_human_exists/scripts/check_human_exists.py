@@ -41,9 +41,10 @@ class CheckHumanExistance(PNPSimplePluginServer):
         finally:
             if self._ps.is_preempt_requested():
                 self._ps.set_preempted()
+            elif res.result[-1].truth_value:
+                self._ps.set_succeeded(res)
             else:
-                self._ps.set_succeeded(res) 
-
+                self._ps.set_aborted(res)
 
 if __name__ == "__main__":
     rospy.init_node("check_human_existance")
