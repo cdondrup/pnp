@@ -1,0 +1,7 @@
+<launch>
+  <arg name="config_file" default="$(find pepper_control)/conf/goals.yaml"/>
+
+  <node pkg="pepper_control" type="pepper_controller.py" name="pepper_controller" output="screen" respawn="true">
+    <param name="config_file" value="$(arg config_file)" type="string"/>
+  </node>
+</launch>
