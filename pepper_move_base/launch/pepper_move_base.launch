@@ -6,4 +6,5 @@
     <param name="config_file" value="$(arg config_file)" type="string"/>
   </node>
   <node pkg="pepper_move_base" type="track_person.py" name="track_person" output="screen" respawn="true"/>
+  <node pkg="pepper_move_base" type="go_home.py" name="go_home" output="screen" respawn="true"/>
 </launch>

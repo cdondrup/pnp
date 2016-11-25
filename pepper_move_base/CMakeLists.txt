@@ -69,6 +69,7 @@ add_action_files(
   FILES
   QualitativeMovePepper.action
   TrackPerson.action
+  GoHome.action
 )
 
 ## Generate added messages and services with any dependencies listed here

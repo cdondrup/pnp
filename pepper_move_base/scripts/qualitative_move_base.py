@@ -65,7 +65,10 @@ class QualitativeMove(PNPSimplePluginServer):
                         self.move_client.send_goal_and_wait(MoveBaseGoal(target_pose=target_pose))
                     finally:
                         break
-            self._ps.set_succeeded()
+            res = QualitativeMovePepperResult()
+            res.result.append(ActionResult(cond="robot_at_home", truth_value=False))
+            res.result.append(ActionResult(cond="robot_pose_unknown", truth_value=True))
+            self._ps.set_succeeded(res)
 
 
 if __name__ == "__main__":
