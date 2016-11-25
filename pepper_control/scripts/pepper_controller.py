@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 
+import sys
+import time
 import rospy
 import rostopic
 import roslib
@@ -12,6 +14,12 @@ from rosplan_knowledge_msgs.msg import KnowledgeItem
 from rosplan_knowledge_msgs.srv  import GetDomainPredicateDetailsService
 from diagnostic_msgs.msg import KeyValue
 from nao_interaction_msgs.srv import SetBreathEnabled, SetBreathEnabledRequest
+from nao_interaction_msgs.srv import LocalizationTrigger, LocalizationTriggerRequest
+from nao_interaction_msgs.srv import LocalizationTriggerString, LocalizationTriggerStringRequest
+from nao_interaction_msgs.srv import LocalizationGetErrorMessage, LocalizationGetErrorMessageRequest
+from nao_interaction_msgs.srv import LocalizationCheck, LocalizationCheckRequest
+from std_srvs.srv import Empty, EmptyRequest
+from std_msgs.msg import String
 from collections import OrderedDict
 import numpy as np
 
@@ -24,9 +32,13 @@ PRECONDITION = "precondition"
 class PepperController(object):
     def __init__(self, name):
         rospy.loginfo("Starting %s ..." % name)
+        rospy.on_shutdown(self.__on_shut_down)
+        self.pnp_state = ""
+        rospy.Subscriber("/rosplan_bridge/current_state", String, self.callback)
         with open(rospy.get_param("~config_file"), 'r') as f:
             config = yaml.load(f)
         print config
+        self.localisation_dir = rospy.get_param("~localisation_dir", "")
         self.clients = OrderedDict()
         self.client_probabilities = []
         for k, v in config.items():
@@ -42,6 +54,9 @@ class PepperController(object):
             self.client_probabilities.append(v["probability"])
             rospy.loginfo("Connected to '%s' server" % v["topic"])
         rospy.loginfo("... done")
+        
+    def callback(self, msg):
+        self.pnp_state = msg.data
         
     def get_goal_type(self, action_name):
         action_name = action_name[1:] if action_name[0] == "/" else action_name
@@ -115,20 +130,85 @@ class PepperController(object):
                 rospy.sleep(1.)
             else:
                 return s(req)
+                
+    def localise_robot(self, ldir):
+        if ldir != "":
+            rospy.loginfo("Loading localisation data from: '%s'" % ldir)
+            res = self.__call_service(
+                "/naoqi_driver/localization/load",
+                LocalizationTriggerString,
+                LocalizationTriggerStringRequest(self.localisation_dir)
+            )
+            if res.result != 0:
+                rospy.logwarn(self.__get_error_message(res.result))
+            else:
+                return
+        
+        self.__localise(ldir)
+                        
+    def __localise(self, ldir):
+        ldir = ldir if ldir != "" else time.strftime("loc_%Y_%m_%d_%H_%M_%S")
+        rospy.loginfo("Starting localisation")
+        res = self.__call_service(
+            "/naoqi_driver/localization/learn_home",
+            LocalizationTrigger,
+            LocalizationTriggerRequest()
+        )
+        if res.result != 0:
+            rospy.logwarn(self.__get_error_message(res.result))
+        if not self.__call_service("/naoqi_driver/localization/is_data_available", LocalizationCheck, LocalizationCheckRequest()).result:
+            rospy.logerr("No localisation data available")
+            sys.exit(1)
+        else:
+            rospy.loginfo("Saving localisation data to: '%s'" % ldir)
+            res = self.__call_service(
+                "/naoqi_driver/localization/save",
+                LocalizationTriggerString,
+                LocalizationTriggerStringRequest(ldir)
+            )
+            if res.result != 0:
+                rospy.logwarn(self.__get_error_message(res.result))
+                
+    def __get_error_message(self, code):
+        return self.__call_service(
+            "/naoqi_driver/localization/get_message_from_error_code",
+            LocalizationGetErrorMessage,
+            LocalizationGetErrorMessageRequest(code)
+        ).error_message
+        
+    def set_breathing(self, flag):
+        self.__call_service(
+            "/naoqi_driver/motion/set_breath_enabled", 
+            SetBreathEnabled, 
+            SetBreathEnabledRequest(SetBreathEnabledRequest.ARMS, flag)
+        )
         
     def spin(self):
-        self.__call_service("/naoqi_driver/set_breath_enabled", SetBreathEnabled, SetBreathEnabledRequest(SetBreathEnabledRequest.ARMS, True))
+        self.set_breathing(True)
+        self.localise_robot(self.localisation_dir)
         while not rospy.is_shutdown():
             action = np.random.choice(self.clients.keys(), p=self.client_probabilities)
             rospy.loginfo("Chose '%s' for execution" % action)
-            rospy.loginfo("Checking precondition")
+            rospy.loginfo("Checking precondition '%s'" % self.clients[action][PRECONDITION])
+            print self.query_knowledgbase(self.clients[action][PRECONDITION])
             while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][PRECONDITION]):
                 rospy.sleep(1.0)
-            rospy.loginfo("Starting execution of '%s'" % action)
-            self.clients[action][CLIENT].send_goal_and_wait(self.clients[action][ACTIONGOAL])
+            while not rospy.is_shutdown() and not self.pnp_state == "goal":
+                rospy.loginfo("Starting execution of '%s'" % action)
+                self.clients[action][CLIENT].send_goal_and_wait(self.clients[action][ACTIONGOAL])
+                rospy.sleep(1.0)
             while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][GOAL]):
                 rospy.sleep(1.0)
             rospy.loginfo("Goal '%s' achieved" % self.clients[action][GOAL])
+            self.pnp_state = ""
+            
+    def __on_shut_down(self):
+        self.set_breathing(False)
+        self.__call_service(
+            "/naoqi_driver/localization/stop_all",
+            Empty,
+            EmptyRequest()
+        )
 
 
 if __name__ == "__main__":
