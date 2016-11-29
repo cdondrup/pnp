@@ -64,6 +64,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_action_files(
   FILES
   GoalServer.action
+  RouteDescriptionGoalServer.action
 )
 
 ## Generate added messages and services with any dependencies listed here
