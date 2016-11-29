@@ -3,7 +3,8 @@
 
 
 import rospy
-from actionlib import SimpleActionServer
+from pnp_plugin_server.pnp_simple_plugin_server import PNPSimplePluginServer
+from pnp_msgs.msg import ActionResult
 from pepper_route_description.msg import RouteDescriptionAction, RouteDescriptionResult
 from pymongo import MongoClient
 from std_msgs.msg import String
@@ -41,7 +42,7 @@ class ServiceThread(threading.Thread):
 class DescribeRoute(object):
     def __init__(self, name):
         rospy.loginfo("Starting %s ..." % name)
-        self._as = SimpleActionServer(
+        self._as = PNPSimplePluginServer(
             name,
             RouteDescriptionAction,
             execute_cb=self.execute_cb,
@@ -61,9 +62,10 @@ class DescribeRoute(object):
         rospy.loginfo("... done")
 
     def execute_cb(self, goal):
+        shop_id = goal.shop_id.split('_')[1]
         result = self.db[self.collection_name].find_one(
             {
-                "shop_id": goal.shop_id, 
+                "shop_id": shop_id, 
                 "semantic_map_name": self.semantic_map_name
             }
         )
@@ -100,7 +102,10 @@ class DescribeRoute(object):
         self.tts.publish(result["directions"])
         rospy.sleep(3.)
         self.set_breathing(True)
-        self._as.set_succeeded(RouteDescriptionResult())
+        res = RouteDescriptionResult()
+        res.result.append(ActionResult(cond="described_route__%s__%s" % (goal.shop_id,goal.waypoint), truth_value=True))
+        res.result.append(ActionResult(cond="finished_description__%s__%s" % (goal.shop_id,goal.waypoint), truth_value=False))
+        self._as.set_succeeded(res)
         
     def transform_pose(self, target_frame, pose):
         while not rospy.is_shutdown() and not self._as.is_preempt_requested():
