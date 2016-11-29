@@ -26,8 +26,9 @@ class GoalServer(object):
         )
         self.planning_goal = predicate + "__" + "__".join(parameters)
         print self.planning_goal
-        self._as.start()
         self.client = SimpleActionClient("/kcl_rosplan/start_planning", PlanAction)
+        self.client.wait_for_server()
+        self._as.start()
         rospy.loginfo("... done")
 
     def execute_cb(self, goal):
