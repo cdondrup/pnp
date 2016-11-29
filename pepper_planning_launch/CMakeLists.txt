@@ -7,7 +7,7 @@ project(pepper_planning_launch)
 find_package(catkin REQUIRED COMPONENTS
   pepper_check_human_exists
   pepper_move_base
-  pepper_world_state
+  pepper_world_state_kb
   pepper_speak
 )
 
@@ -103,7 +103,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES pepper_planning_launch
-#  CATKIN_DEPENDS pepper_check_human_exists pepper_move_base pepper_world_state pepper_speak
+#  CATKIN_DEPENDS pepper_check_human_exists pepper_move_base pepper_world_state_kb pepper_speak
 #  DEPENDS system_lib
 )
 
