@@ -70,6 +70,7 @@ add_action_files(
   QualitativeMovePepper.action
   TrackPerson.action
   GoHome.action
+  MoveToWaypoint.action
 )
 
 ## Generate added messages and services with any dependencies listed here
