@@ -21,6 +21,24 @@ static_instances:
   interactant_id:
     - arguments:
       - value: "iid_0"
+  shop_id:
+    - arguments:
+      - value: "sid_0"
+    - arguments:
+      - value: "sid_1"
+    - arguments:
+      - value: "sid_2"
+    - arguments:
+      - value: "sid_3"
+  waypoint:
+    - arguments:
+      - value: "waypoint1"
+    - arguments:
+      - value: "waypoint2"
+    - arguments:
+      - value: "waypoint3"
+    - arguments:
+      - value: "none"
 inputs:
   - topic: "/naoqi_driver_node/people_detected"
     base_attribute: "person_array"
