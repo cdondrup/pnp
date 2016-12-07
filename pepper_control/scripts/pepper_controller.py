@@ -18,6 +18,8 @@ from nao_interaction_msgs.srv import LocalizationTrigger, LocalizationTriggerReq
 from nao_interaction_msgs.srv import LocalizationTriggerString, LocalizationTriggerStringRequest
 from nao_interaction_msgs.srv import LocalizationGetErrorMessage, LocalizationGetErrorMessageRequest
 from nao_interaction_msgs.srv import LocalizationCheck, LocalizationCheckRequest
+from nao_interaction_msgs.srv import GoToPosture, GoToPostureRequest
+from nao_interaction_msgs.srv import BehaviorManagerControl, BehaviorManagerControlRequest
 from std_srvs.srv import Empty, EmptyRequest
 from std_msgs.msg import String
 from collections import OrderedDict
@@ -39,6 +41,7 @@ class PepperController(object):
             config = yaml.load(f)
         print config
         self.localisation_dir = rospy.get_param("~localisation_dir", "")
+        self.logo_app = rospy.get_param("~logo_app", "showmummerlogo-a897b8/behavior_1")
         self.clients = OrderedDict()
         self.client_probabilities = []
         for k, v in config.items():
@@ -56,6 +59,7 @@ class PepperController(object):
         rospy.loginfo("... done")
         
     def callback(self, msg):
+        print "received", msg
         self.pnp_state = msg.data
         
     def get_goal_type(self, action_name):
@@ -125,7 +129,7 @@ class PepperController(object):
                     srv_type
                 )
                 s.wait_for_service(timeout=1.)
-            except rospy.ROSException:
+            except rospy.ROSException, rospy.ServiceException:
                 rospy.logwarn("Could not communicate with '%s' service. Retrying in 1 second." % srv_name)
                 rospy.sleep(1.)
             else:
@@ -183,24 +187,62 @@ class PepperController(object):
             SetBreathEnabledRequest(SetBreathEnabledRequest.ARMS, flag)
         )
         
+    def wake_up(self):
+        self.__call_service(
+            "/naoqi_driver/motion/wake_up", 
+            Empty, 
+            EmptyRequest()
+        )
+        
+    def rest(self):
+        self.__call_service(
+            "/naoqi_driver/motion/rest", 
+            Empty, 
+            EmptyRequest()
+        )
+        
+    def stand(self):
+        self.__call_service(
+            "/naoqi_driver/robot_posture/go_to_posture", 
+            GoToPosture, 
+            GoToPostureRequest(GoToPostureRequest.STAND_INIT, 0.3)
+        )
+        
+    def show_logo(self, flag):
+        try:
+            self.__call_service(
+                "/naoqi_driver/behaviour_manager/start_behaviour" if flag else "/naoqi_driver/behaviour_manager/stop_behaviour", 
+                BehaviorManagerControl, 
+                BehaviorManagerControlRequest(name=self.logo_app)
+            )
+        except:
+            rospy.logwarn("Could not start logo app. Service responded with error.")
+        
     def spin(self):
+        self.wake_up()
+        self.stand()
+        self.show_logo(True)
         self.set_breathing(True)
         self.localise_robot(self.localisation_dir)
         while not rospy.is_shutdown():
+            self.stand()
             action = np.random.choice(self.clients.keys(), p=self.client_probabilities)
             rospy.loginfo("Chose '%s' for execution" % action)
             rospy.loginfo("Checking precondition '%s'" % self.clients[action][PRECONDITION])
-            print self.query_knowledgbase(self.clients[action][PRECONDITION])
             while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][PRECONDITION]):
                 rospy.sleep(1.0)
-            while not rospy.is_shutdown() and not self.pnp_state == "goal":
-                rospy.loginfo("Starting execution of '%s'" % action)
+            rospy.loginfo("Starting execution of '%s'" % action)
+            self.pnp_state = ""
+            while not rospy.is_shutdown() and self.pnp_state != "goal":
+                rospy.loginfo("Executing '%s'" % action)
                 self.clients[action][CLIENT].send_goal_and_wait(self.clients[action][ACTIONGOAL])
                 rospy.sleep(1.0)
+            rospy.loginfo("Waiting for goal state to be true")
             while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][GOAL]):
                 rospy.sleep(1.0)
             rospy.loginfo("Goal '%s' achieved" % self.clients[action][GOAL])
             self.pnp_state = ""
+            self.stand()
             
     def __on_shut_down(self):
         self.set_breathing(False)
@@ -209,6 +251,8 @@ class PepperController(object):
             Empty,
             EmptyRequest()
         )
+        self.show_logo(False)
+        self.rest()
 
 
 if __name__ == "__main__":
