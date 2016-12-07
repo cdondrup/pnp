@@ -23,7 +23,8 @@ class EngageHuman(object):
     def execute_cb(self, goal):
         rospy.loginfo("Engaging human '%s'" % (goal.id,))
         res = EngageHumanResult()
-        res.result.append(ActionResult(cond="engaged__"+goal.interactant_id+"__"+goal.text, truth_value=True))
+#        Has to be done in the end of the dialogue so the controller is blocked till it is over.
+#        res.result.append(ActionResult(cond="engaged__"+goal.interactant_id+"__"+goal.text, truth_value=True))
         if self._ps.is_preempt_requested():
             self._ps.set_preempted()
         else:
