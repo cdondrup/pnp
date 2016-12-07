@@ -3,10 +3,12 @@
 
 
 import rospy
+from actionlib import SimpleActionClient
 from pnp_plugin_server.pnp_simple_plugin_server import PNPSimplePluginServer
 from pepper_speak.msg import SpeakAction, SpeakResult
 from pnp_msgs.msg import ActionResult
 from std_msgs.msg import String
+from mummer_dialogue.msg import dialogueAction, dialogueGoal
 
 
 class Speak(object):
@@ -16,6 +18,14 @@ class Speak(object):
             "hello": "Hello, I am pepper!"        
         }
         self.predicate = rospy.get_param("~predicate", "said")
+        rospy.loginfo("Starting dialogue client")
+        self.client = SimpleActionClient(
+            "/dialogue_start",
+            dialogueAction
+        )
+        rospy.loginfo("Waiting for dialogue client")
+        self.client.wait_for_server()
+        rospy.loginfo("Dialogue client started")
         self.pub = rospy.Publisher("/animated_speech", String, queue_size=10)
         self._ps = PNPSimplePluginServer(
             name=name,
@@ -27,8 +37,9 @@ class Speak(object):
         rospy.loginfo("... done")
         
     def execute_cb(self, goal):
-        self.pub.publish(self.texts[goal.text])
-        rospy.sleep(3)
+#        self.pub.publish(self.texts[goal.text])
+#        rospy.sleep(3)
+        self.client.send_goal(dialogueGoal(userID=int(goal.id.split("_")[1])))
         res = SpeakResult()
         res.result.append(ActionResult(cond=self.predicate+"__"+goal.id+"__"+goal.text, truth_value=ActionResult.TRUE))
         self._ps.set_succeeded(res)
