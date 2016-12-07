@@ -24,6 +24,7 @@ class TerminateInteraction(object):
         rospy.loginfo("Engaging human '%s'" % (goal.id,))
         res = TerminateInteractionResult()
         res.result.append(ActionResult(cond="engaged__"+goal.interactant_id+"__"+goal.text, truth_value=False))
+        res.result.append(ActionResult(cond="said__"+goal.id+"__"+goal.text, truth_value=False))
         res.result.append(ActionResult(cond="found_interactant__"+goal.interactant_id+"__"+goal.id, truth_value=False))
         res.result.append(ActionResult(cond="human_exists__"+goal.id, truth_value=False))
         res.result.append(ActionResult(cond="free_interactant_id__"+goal.interactant_id, truth_value=True))
