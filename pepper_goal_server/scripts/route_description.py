@@ -3,6 +3,7 @@
 
 
 import rospy
+import roslib
 from actionlib import SimpleActionServer, SimpleActionClient
 from actionlib_msgs.msg import GoalStatus
 from pepper_goal_server.msg import RouteDescriptionGoalServerAction
@@ -45,12 +46,13 @@ class GoalServer(object):
                 "semantic_map_name": self.semantic_map_name
             }
         )
-        self.add_goal("described_route__sid_%s__%s" % (goal.shop_id, result["waypoint"]))
+#        self.add_goal("described_route__sid_%s__%s" % (goal.shop_id, result["waypoint"]))
+#        if self.call_planning():
+#            self.__call_service("/kcl_rosplan/clear_goals", Empty, EmptyRequest())
+        self.remove_knowledge("finished_description__sid_%s__%s" % (goal.shop_id, result["waypoint"]))
+        self.add_goal("finished_description__sid_%s__%s" % (goal.shop_id, result["waypoint"]))
         if self.call_planning():
-            self.__call_service("/kcl_rosplan/clear_goals", Empty, EmptyRequest())
-            self.add_goal("finished_description__sid_%s__%s" % (goal.shop_id, result["waypoint"]))
-            if self.call_planning():
-                self._as.set_succeeded()
+            self._as.set_succeeded()
         self._as.set_aborted()
         
     def call_planning(self):
@@ -61,11 +63,17 @@ class GoalServer(object):
         return False
         
     def add_goal(self, goal):
+        self.update_kb(goal, KnowledgeUpdateServiceArrayRequest.ADD_GOAL)
+        
+    def remove_knowledge(self, knowledge):
+        self.update_kb(knowledge, KnowledgeUpdateServiceArrayRequest.REMOVE_KNOWLEDGE)
+        
+    def update_kb(self, predicate, update_type):
         srv_name = "/kcl_rosplan/update_knowledge_base_array"
         req = KnowledgeUpdateServiceArrayRequest()
-        req.update_type = req.ADD_GOAL
-        goal = [goal] if not isinstance(goal,list) else goal
-        for p in goal:
+        req.update_type = update_type
+        predicate = [predicate] if not isinstance(predicate,list) else predicate
+        for p in predicate:
             cond = p.split("__")
             rospy.loginfo("Adding %s" % str(p))
             tp = self._get_predicate_details(cond[0]).predicate.typed_parameters
