@@ -205,7 +205,7 @@ class PepperController(object):
         self.__call_service(
             "/naoqi_driver/robot_posture/go_to_posture", 
             GoToPosture, 
-            GoToPostureRequest(GoToPostureRequest.STAND_INIT, 0.3)
+            GoToPostureRequest(GoToPostureRequest.STAND_INIT, 0.5)
         )
         
     def show_logo(self, flag):
