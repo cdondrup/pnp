@@ -1,4 +1,5 @@
 string id
+string interactant_id
 ---
 pnp_msgs/ActionResult[] result
 ---

@@ -30,6 +30,8 @@ class CheckHumanExistance(PNPSimplePluginServer):
         except rospy.ROSException as e:
             rospy.logwarn(e)
             res.result.append(ActionResult(cond=self.predicate+"__"+goal.id, truth_value=ActionResult.FALSE))
+            res.result.append(ActionResult(cond="found_interactant__"+goal.interactant_id+"__"+goal.id, truth_value=True))
+            res.result.append(ActionResult(cond="free_interactant_id__"+goal.interactant_id, truth_value=False))
         else:
             found = ActionResult.FALSE
             int_id = int(goal.id.split("_")[1])
@@ -44,6 +46,7 @@ class CheckHumanExistance(PNPSimplePluginServer):
             elif res.result[-1].truth_value:
                 self._ps.set_succeeded(res)
             else:
+                print "##### ABORTED #####"
                 self._ps.set_aborted(res)
 
 if __name__ == "__main__":
