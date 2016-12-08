@@ -1,5 +1,6 @@
 string id
 string interactant_id
+bool no_turn
 ---
 pnp_msgs/ActionResult[] result
 ---

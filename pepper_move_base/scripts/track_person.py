@@ -28,6 +28,7 @@ class PeopleTracking(object):
         
     def stop(self):
         PeopleTracking.sub.unregister()
+        self.pub.publish(Twist())
         
     def callback(self, msg):
         for p in msg.person_array:
@@ -80,8 +81,10 @@ class StartStopPeopleTracking(PeopleTracking):
         rospy.loginfo("... done")
         
     def start_cb(self, goal):
+        print goal
         self.id = goal.id.split('_')[1]
-        self.start()
+        if not goal.no_turn:
+            self.start()
         req = SetTrackerTargetRequest()
         req.target = req.PEOPLE
         req.values.append(float(self.id))

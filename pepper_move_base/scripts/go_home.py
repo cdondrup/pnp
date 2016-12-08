@@ -3,6 +3,8 @@
 
 
 import rospy
+from actionlib import SimpleActionClient
+from pepper_move_base.msg import TrackPersonAction, TrackPersonGoal
 from pnp_plugin_server.pnp_simple_plugin_server import PNPSimplePluginServer
 from pepper_move_base.msg import GoHomeAction, GoHomeResult
 from pnp_msgs.msg import ActionResult
@@ -21,11 +23,16 @@ class GoHome(object):
             execute_cb=self.execute_cb,
             auto_start=False
         )
+        rospy.loginfo("Creating tracker client")
+        self.stop_client = SimpleActionClient("/stop_tracking_person", TrackPersonAction)
+        self.stop_client.wait_for_server()
+        rospy.loginfo("Tracker client connected")
         self._ps.register_preempt_callback(self.preempt_cb)
         self._ps.start()
         rospy.loginfo("... done")
 
     def execute_cb(self, goal):
+        self.stop_client.send_goal(TrackPersonGoal())
         if self.__call_service("/naoqi_driver/localization/is_data_available", LocalizationCheck, LocalizationCheckRequest()).result:
             while not rospy.is_shutdown() and not self._ps.is_preempt_requested():
                 rospy.loginfo("Robot returning home")

@@ -11,6 +11,7 @@ from nao_interaction_msgs.msg import PersonDetectedArray
 import tf
 from geometry_msgs.msg import PoseStamped
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from pepper_move_base.msg import TrackPersonAction, TrackPersonGoal
 import yaml
 import math
 from copy import deepcopy
@@ -30,10 +31,15 @@ class QualitativeMove(PNPSimplePluginServer):
             execute_cb=self.execute_cb,
             auto_start=False
         )
+        rospy.loginfo("Creating tracker client")
+        self.start_client = SimpleActionClient("/start_tracking_person", TrackPersonAction)
+        self.start_client.wait_for_server()
+        rospy.loginfo("Tracker client connected")
         self._ps.start()
         rospy.loginfo("... done")
         
     def execute_cb(self, goal):
+        self.start_client.send_goal(TrackPersonGoal(id=goal.id, no_turn=True))
         try:
             msg = rospy.wait_for_message("/naoqi_driver_node/people_detected", PersonDetectedArray, timeout=5.)
         except rospy.ROSException as e:
