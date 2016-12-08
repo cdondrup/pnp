@@ -30,6 +30,16 @@ static_instances:
       - value: "sid_2"
     - arguments:
       - value: "sid_3"
+    - arguments:
+      - value: "sid_4"
+    - arguments:
+      - value: "sid_5"
+    - arguments:
+      - value: "sid_6"
+    - arguments:
+      - value: "sid_7"
+    - arguments:
+      - value: "sid_8"
   waypoint:
     - arguments:
       - value: "waypoint1"
