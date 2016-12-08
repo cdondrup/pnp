@@ -10,9 +10,17 @@ from pymongo import MongoClient
 from std_msgs.msg import String
 import tf
 from geometry_msgs.msg import PoseStamped
+from nao_interaction_msgs.msg import PersonDetectedArray
 from nao_interaction_msgs.srv import TrackerPointAt, TrackerPointAtRequest
 from nao_interaction_msgs.srv import TrackerLookAt, TrackerLookAtRequest
 from nao_interaction_msgs.srv import SetBreathEnabled, SetBreathEnabledRequest
+from nao_interaction_msgs.srv import Say, SayRequest
+from nav_msgs.msg import Odometry
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from actionlib import SimpleActionClient
+from geometry_msgs.msg import Twist
+from pepper_move_base.msg import TrackPersonAction, TrackPersonGoal
+from nao_interaction_msgs.srv import GoToPosture, GoToPostureRequest
 import threading
 
 
@@ -40,8 +48,10 @@ class ServiceThread(threading.Thread):
 
 
 class DescribeRoute(object):
+    BASE_LINK = "base_link"
     def __init__(self, name):
         rospy.loginfo("Starting %s ..." % name)
+        self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
         self._as = PNPSimplePluginServer(
             name,
             RouteDescriptionAction,
@@ -53,6 +63,16 @@ class DescribeRoute(object):
             rospy.get_param("~db_host", "localhost"),
             int(rospy.get_param("~db_port", 62345))
         )
+        rospy.loginfo("Creating move_base client")
+        self.move_client = SimpleActionClient("/move_base", MoveBaseAction)
+        self.move_client.wait_for_server()
+        rospy.loginfo("Move_base client connected")
+        rospy.loginfo("Creating tracker client")
+        self.start_client = SimpleActionClient("/start_tracking_person", TrackPersonAction)
+        self.start_client.wait_for_server()
+        self.stop_client = SimpleActionClient("/stop_tracking_person", TrackPersonAction)
+        self.stop_client.wait_for_server()
+        rospy.loginfo("Tracker client connected")        
         self.db_name = rospy.get_param("~db_name", "semantic_map")
         self.collection_name = rospy.get_param("~collection_name", "idea_park")
         self.semantic_map_name = rospy.get_param("~semantic_map_name")
@@ -60,8 +80,31 @@ class DescribeRoute(object):
         self.db = client[self.db_name]
         self.tts = rospy.Publisher("/speech", String, queue_size=1)
         rospy.loginfo("... done")
+        
+    def stand(self):
+        print "STANDING"
+        self.__call_service(
+            "/naoqi_driver/robot_posture/go_to_posture", 
+            GoToPosture, 
+            GoToPostureRequest(GoToPostureRequest.STAND_INIT, 0.5)
+        )
+        
+    def __call_service(self, srv_name, srv_type, req):
+         while not rospy.is_shutdown():
+            try:
+                s = rospy.ServiceProxy(
+                    srv_name,
+                    srv_type
+                )
+                s.wait_for_service(timeout=1.)
+            except rospy.ROSException, rospy.ServiceException:
+                rospy.logwarn("Could not communicate with '%s' service. Retrying in 1 second." % srv_name)
+                rospy.sleep(1.)
+            else:
+                return s(req)
 
     def execute_cb(self, goal):
+        self.stop_client.send_goal(TrackPersonGoal())
         shop_id = goal.shop_id.split('_')[1]
         result = self.db[self.collection_name].find_one(
             {
@@ -70,24 +113,31 @@ class DescribeRoute(object):
             }
         )
         
+        rospy.loginfo("Waiting for current pose from odometry.")
+        o = rospy.wait_for_message("/naoqi_driver_node/odom", Odometry)        
+        current_pose = PoseStamped()
+        current_pose.header = o.header
+        current_pose.pose = o.pose.pose
+        rospy.loginfo("Received pose.")
+        
         loc = PoseStamped()
         loc.header.frame_id = "semantic_map"
         loc.pose.position.x = float(result["loc_x"])
         loc.pose.position.y = float(result["loc_y"])
 
-        target = self.transform_pose("base_link", loc)
+        target = self.transform_pose(DescribeRoute.BASE_LINK, loc)
         t = TrackerPointAtRequest()
         t.effector = t.EFFECTOR_RARM
         t.frame = t.FRAME_TORSO
-        t.max_speed_fraction = 0.1
+        t.max_speed_fraction = 0.5
         t.target.x = target.pose.position.x
         t.target.y = target.pose.position.y
         s1 = ServiceThread("/naoqi_driver/tracker/point_at", TrackerPointAt, t)
         self.set_breathing(False)
         s1.start()
         s1.join(timeout=1.0)
-        
-        target = self.transform_pose("base_link", loc)
+
+        target = self.transform_pose(DescribeRoute.BASE_LINK, loc)
         t = TrackerLookAtRequest()
         t.use_whole_body = False
         t.frame = t.FRAME_TORSO
@@ -98,10 +148,23 @@ class DescribeRoute(object):
         s2.start()
         s1.join()
         s2.join()
+        self.pub.publish(Twist())
 
-        self.tts.publish(result["directions"])
-        rospy.sleep(3.)
+        current_pose = self.transform_pose(DescribeRoute.BASE_LINK, current_pose)
+        current_pose.pose.position.x = 0.
+        current_pose.pose.position.y = 0.
+        current_pose.pose.position.z = 0.
+        
+        self.pub.publish(Twist())
+        self.__call_service("/naoqi_driver/tts/say", Say, SayRequest(result["directions"]%result["shopName"]))
         self.set_breathing(True)
+        g = MoveBaseGoal()
+        g.target_pose = current_pose
+        self.move_client.send_goal_and_wait(g)
+        self.stand()
+        t = TrackPersonGoal()
+        t.id = "id_%s"%rospy.wait_for_message("/naoqi_driver_node/people_detected", PersonDetectedArray).person_array[0].id
+        self.start_client.send_goal(t)
         res = RouteDescriptionResult()
         res.result.append(ActionResult(cond="described_route__%s__%s" % (goal.shop_id,goal.waypoint), truth_value=True))
         res.result.append(ActionResult(cond="finished_description__%s__%s" % (goal.shop_id,goal.waypoint), truth_value=False))
@@ -123,20 +186,6 @@ class DescribeRoute(object):
             SetBreathEnabled, 
             SetBreathEnabledRequest(SetBreathEnabledRequest.ARMS, flag)
         )
-            
-    def __call_service(self, srv_name, srv_type, req):
-        while not rospy.is_shutdown():
-            try:
-                s = rospy.ServiceProxy(
-                    srv_name,
-                    srv_type
-                )
-                s.wait_for_service(timeout=1.)
-            except rospy.ROSException:
-                rospy.logwarn("Could not communicate with '%s' service. Retrying in 1 second." % srv_name)
-                rospy.sleep(1.)
-            else:
-                return s(req)
 
 if __name__ == "__main__":
     rospy.init_node("describe_route")
