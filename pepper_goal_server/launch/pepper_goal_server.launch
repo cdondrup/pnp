@@ -1,7 +1,11 @@
 <launch>
+  <arg name="semantic_map_name"/>
   <arg name="config_file" default="$(find pepper_goal_server)/conf/goals.yaml"/>
 
   <node pkg="pepper_goal_server" type="goal_server.py" name="goal_server" output="screen" respawn="true">
     <param name="config_file" value="$(arg config_file)" type="string"/>
+  </node>
+  <node pkg="pepper_goal_server" type="route_description.py" name="route_description_goal_server" output="screen" respawn="true">
+    <param name="semantic_map_name" value="$(arg semantic_map_name)" type="string"/>
   </node>
 </launch>

@@ -1,17 +1,10 @@
 <launch>
-
+  <arg name="semantic_map_name"/>
   <arg name="move_config_file" default="$(find pepper_move_base)/conf/distances.yaml"/>
   <arg name="qual_config_file" default="$(find pepper_world_state_kb)/conf/parsing.yaml"/>
-  <!-- arg name="working_dir" default="/tmp" />
-  <arg name="domain_path" default="$(find rosplan_planning_system)/common/domain.pddl" />
-  <arg name="persistent" default="true" />
-  <arg name="db_host" default="localhost" />
-  <arg name="db_port" default="62345" />
-  <arg name="db_name" default="kcl_knowledge_base" / -->
-
-  <include file="$(find pnp_ros)/launch/pnp_ros.launch">
-  </include>
-
+  
+  <include file="$(find pnp_ros)/launch/pnp_ros.launch"/>
+  
   <node name="pnpgen" pkg="pnpgen_ros" type="pnpgen_server" output="screen" respawn="true"/>
   <node name="rosplan_bridge" pkg="rosplan_pnp_bridge" type="pnp_bridge.py" output="screen" respawn="true"/>
   <node name="check_human_existance" pkg="pepper_check_human_exists" type="check_human_exists.py" output="screen" respawn="true"/>
@@ -22,6 +15,9 @@
 
   <include file="$(find pepper_move_base)/launch/pepper_move_base.launch">
     <arg name="config_file" value="$(arg move_config_file)" />    
+  </include>
+  <include file="$(find pepper_route_description)/launch/pepper_route_description.launch">
+    <arg name="semantic_map_name" value="$(arg semantic_map_name)" />    
   </include>
   <include file="$(find pepper_engage_human)/launch/pepper_engage_human.launch"/>
 

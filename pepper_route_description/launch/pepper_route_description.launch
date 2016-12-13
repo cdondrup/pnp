@@ -1,0 +1,8 @@
+<launch>
+  <arg name="semantic_map_name"/>
+  
+  <node pkg="pepper_route_description" type="describe_route.py" name="describe_route" output="screen" respawn="true">
+    <param name="semantic_map_name" value="$(arg semantic_map_name)" type="string"/>
+  </node>
+  <node pkg="pepper_route_description" type="finish_description.py" name="finish_description" output="screen" respawn="true"/>
+</launch>
