@@ -3,7 +3,6 @@
 
 
 import rospy
-import roslib
 from actionlib import SimpleActionServer, SimpleActionClient
 from actionlib_msgs.msg import GoalStatus
 from pepper_goal_server.msg import RouteDescriptionGoalServerAction

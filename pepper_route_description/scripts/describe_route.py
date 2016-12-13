@@ -21,6 +21,7 @@ from actionlib import SimpleActionClient
 from geometry_msgs.msg import Twist
 from pepper_move_base.msg import TrackPersonAction, TrackPersonGoal
 from nao_interaction_msgs.srv import GoToPosture, GoToPostureRequest
+from naoqi_bridge_msgs.msg import JointAnglesWithSpeed
 import threading
 
 
@@ -79,6 +80,7 @@ class DescribeRoute(object):
         self._as.start()
         self.db = client[self.db_name]
         self.tts = rospy.Publisher("/speech", String, queue_size=1)
+        self.joints = rospy.Publisher("/joint_angles", JointAnglesWithSpeed, queue_size=10)
         rospy.loginfo("... done")
         
     def stand(self):
@@ -88,6 +90,11 @@ class DescribeRoute(object):
             GoToPosture, 
             GoToPostureRequest(GoToPostureRequest.STAND_INIT, 0.5)
         )
+        j = JointAnglesWithSpeed()
+        j.joint_names = ['HeadYaw', 'HeadPitch']
+        j.joint_angles = [0.,-.5]
+        j.speed = .05
+        self.joints.publish(j)
         
     def __call_service(self, srv_name, srv_type, req):
          while not rospy.is_shutdown():
