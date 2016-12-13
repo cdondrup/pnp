@@ -20,10 +20,13 @@ from nao_interaction_msgs.srv import LocalizationGetErrorMessage, LocalizationGe
 from nao_interaction_msgs.srv import LocalizationCheck, LocalizationCheckRequest
 from nao_interaction_msgs.srv import GoToPosture, GoToPostureRequest
 from nao_interaction_msgs.srv import BehaviorManagerControl, BehaviorManagerControlRequest
+from nao_interaction_msgs.msg import PersonDetectedArray
+from naoqi_bridge_msgs.msg import JointAnglesWithSpeed 
 from std_srvs.srv import Empty, EmptyRequest
 from std_msgs.msg import String
 from collections import OrderedDict
 import numpy as np
+from threading import Thread
 
 CLIENT = "client"
 GOAL = "goal"
@@ -135,6 +138,21 @@ class PepperController(object):
             else:
                 return s(req)
                 
+    def idle(self):
+        j = JointAnglesWithSpeed()
+        j.joint_names = ['HeadYaw', 'HeadPitch']
+        j.joint_angles = [.5,-.5]
+        j.speed = .05
+        pub = rospy.Publisher("/joint_angles", JointAnglesWithSpeed, queue_size=10)
+        while not rospy.is_shutdown() and self.is_idle:
+            try:
+                rospy.wait_for_message("/naoqi_driver_node/people_detected", PersonDetectedArray, timeout=5.)
+            except rospy.ROSException, rospy.ROSInterruptException:
+#                j.joint_angles[0] *= -1.
+#                j.joint_angles[1] = np.random.rand()-.5
+                j.joint_angles = [np.random.rand()-.5, -(np.random.rand()*.6)]
+                pub.publish(j)
+                
     def localise_robot(self, ldir):
         if ldir != "":
             rospy.loginfo("Loading localisation data from: '%s'" % ldir)
@@ -232,11 +250,16 @@ class PepperController(object):
             while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][PRECONDITION]):
                 rospy.sleep(1.0)
             rospy.loginfo("Starting execution of '%s'" % action)
+            self.is_idle = True
+            t = Thread(target=self.idle, args=())
+            t.start()
             self.pnp_state = ""
             while not rospy.is_shutdown() and self.pnp_state != "goal":
                 rospy.loginfo("Executing '%s'" % action)
                 self.clients[action][CLIENT].send_goal_and_wait(self.clients[action][ACTIONGOAL])
                 rospy.sleep(1.0)
+            self.is_idle = False
+            t.join()
             rospy.loginfo("Waiting for goal state to be true")
             while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][GOAL]):
                 rospy.sleep(1.0)
