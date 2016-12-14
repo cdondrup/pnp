@@ -1,7 +1,7 @@
 <launch>
   <arg name="semantic_map_name"/>
   <arg name="move_config_file" default="$(find pepper_move_base)/conf/distances.yaml"/>
-  <arg name="qual_config_file" default="$(find pepper_world_state_kb)/conf/parsing.yaml"/>
+  <arg name="kb_config_file" default="$(find pepper_world_state_kb)/conf/parsing.yaml"/>
   
   <include file="$(find pnp_ros)/launch/pnp_ros.launch"/>
   
@@ -9,7 +9,7 @@
   <node name="rosplan_bridge" pkg="rosplan_pnp_bridge" type="pnp_bridge.py" output="screen" respawn="true"/>
   <node name="check_human_existance" pkg="pepper_check_human_exists" type="check_human_exists.py" output="screen" respawn="true"/>
   <node name="planning_world_state_manager" pkg="pepper_world_state_kb" type="world_state.py" output="screen" respawn="true">
-    <param name="config_file" type="string" value="$(arg qual_config_file)"/>
+    <param name="config_file" type="string" value="$(arg kb_config_file)"/>
   </node>
   <node name="say" pkg="pepper_speak" type="speak.py" output="screen" respawn="true"/>
 
