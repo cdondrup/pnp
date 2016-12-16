@@ -66,18 +66,32 @@ class PepperController(object):
         self.pnp_state = msg.data
         
     def get_goal_type(self, action_name):
-        action_name = action_name[1:] if action_name[0] == "/" else action_name
-        topic_type = rostopic._get_topic_type("/%s/goal" % action_name)[0]
-        # remove "Action" string from goal type
-        assert("Action" in topic_type)
-        return roslib.message.get_message_class(topic_type[:-10]+"Goal")
+        while not rospy.is_shutdown():
+            action_name = action_name[1:] if action_name[0] == "/" else action_name
+            topic_type = rostopic._get_topic_type("/%s/goal" % action_name)[0]
+            # remove "Action" string from goal type
+            try:
+                assert("Action" in topic_type)
+            except TypeError:
+                rospy.logwarn("Topic %s doe not seem to be available yet, retrying in 1 second")
+                rospy.sleep(1.)
+                continue
+            else:
+                return roslib.message.get_message_class(topic_type[:-10]+"Goal")
 
     def get_action_type(self, action_name):
-        action_name = action_name[1:] if action_name[0] == "/" else action_name
-        topic_type = rostopic._get_topic_type("/%s/goal" % action_name)[0]
-        # remove "Goal" string from action type
-        assert("Goal" in topic_type)
-        return roslib.message.get_message_class(topic_type[:-4])
+        while not rospy.is_shutdown():
+            action_name = action_name[1:] if action_name[0] == "/" else action_name
+            topic_type = rostopic._get_topic_type("/%s/goal" % action_name)[0]
+            # remove "Goal" string from action type
+            try:
+                assert("Goal" in topic_type)
+            except TypeError:
+                rospy.logwarn("Topic %s doe not seem to be available yet, retrying in 1 second")
+                rospy.sleep(1.)
+                continue
+            else:
+                return roslib.message.get_message_class(topic_type[:-4])
     
     def _get_predicate_details(self, name):
         srv_name = "/kcl_rosplan/get_domain_predicate_details"

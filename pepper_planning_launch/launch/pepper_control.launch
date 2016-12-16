@@ -2,6 +2,8 @@
   <arg name="semantic_map_name"/>
   <arg name="goal_config_file" default="$(find pepper_goal_server)/conf/goals.yaml"/>
   <arg name="control_config_file" default="$(find pepper_control)/conf/goals.yaml"/>
+  <arg name="localisation_dir" default=""/>
+  <arg name="logo_app" default="showmummerlogo-a897b8/behavior_1"/>
   
   <include file="$(find pepper_goal_server)/launch/pepper_goal_server.launch">
     <arg name="semantic_map_name" value="$(arg semantic_map_name)" />
@@ -9,6 +11,8 @@
   </include>
   <include file="$(find pepper_control)/launch/pepper_control.launch">
     <arg name="config_file" value="$(arg control_config_file)" />    
+    <arg name="localisation_dir" value="$(arg localisation_dir)" />
+    <arg name="logo_app" value="$(arg logo_app)" />
   </include>
 
 </launch>
