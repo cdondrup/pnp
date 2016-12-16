@@ -81,8 +81,10 @@ class StartStopPeopleTracking(PeopleTracking):
         rospy.loginfo("... done")
         
     def start_cb(self, goal):
-        print goal
-        self.id = goal.id.split('_')[1]
+        if goal.id != "":
+            self.id = goal.id.split('_')[1]
+        else:
+            self.id = rospy.wait_for_message("/naoqi_driver_node/people_detected", PersonDetectedArray).person_array[0].id
         if not goal.no_turn:
             self.start()
         req = SetTrackerTargetRequest()
