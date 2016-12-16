@@ -10,7 +10,6 @@ from pymongo import MongoClient
 from std_msgs.msg import String
 import tf
 from geometry_msgs.msg import PoseStamped
-from nao_interaction_msgs.msg import PersonDetectedArray
 from nao_interaction_msgs.srv import TrackerPointAt, TrackerPointAtRequest
 from nao_interaction_msgs.srv import TrackerLookAt, TrackerLookAtRequest
 from nao_interaction_msgs.srv import SetBreathEnabled, SetBreathEnabledRequest
@@ -169,9 +168,7 @@ class DescribeRoute(object):
         g.target_pose = current_pose
         self.move_client.send_goal_and_wait(g)
         self.stand()
-        t = TrackPersonGoal()
-        t.id = "id_%s"%rospy.wait_for_message("/naoqi_driver_node/people_detected", PersonDetectedArray).person_array[0].id
-        self.start_client.send_goal(t)
+        self.start_client.send_goal(TrackPersonGoal())
         res = RouteDescriptionResult()
         res.result.append(ActionResult(cond="described_route__%s__%s" % (goal.shop_id,goal.waypoint), truth_value=True))
         res.result.append(ActionResult(cond="finished_description__%s__%s" % (goal.shop_id,goal.waypoint), truth_value=False))
