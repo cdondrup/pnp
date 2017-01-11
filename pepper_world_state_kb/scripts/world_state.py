@@ -27,6 +27,10 @@ class PlanningWorldState(object):
             config = yaml.load(f)
         rospy.loginfo("Inserting static instances.")
         self.update_knowledgebase(instances=self._create_instances(config["static_instances"]))
+        rospy.loginfo("Inserting static predicates.")
+        t,f = self._create_predicates(config["static_predicates"])
+        self.update_knowledgebase(predicates=t)
+        self.update_knowledgebase(predicates=f, truth_value=0)
         self.subscribers = []
         for inputs in config["inputs"]:
             rospy.loginfo("Subsribing to '%s'." % inputs["topic"])
@@ -57,23 +61,13 @@ class PlanningWorldState(object):
             except KeyError:
                 rospy.logdebug("No instances to be created from message")
             
-            for p in config["data"]["predicates"].items():
-                arg = []
-                tv = []
-                argument_list = [p[1]] if not isinstance(p[1],list) else p[1]
-                for element in argument_list:
-                    try:
-                        arg.append(self.__get_arguments(element["arguments"], data))
-                    except KeyError:
-                        arg.append(tuple())
-                    tv.append(element["truth_value"])
-                        
-                for x, y in zip(tv, arg):
-                    truth_value = eval(x["comparison"].replace("$attribute", str(attrgetter(x["attribute"])(data))))
-                    if truth_value:                
-                        true_predicates.append((p[0],y))
-                    else:
-                        false_predicates.append((p[0],y))
+            try:
+                t,f = self._create_predicates(config["data"]["predicates"], data)
+            except KeyError:
+                rospy.logdebug("No predicates to be created from message")
+            else:
+                true_predicates.extend(t)
+                false_predicates.extend(f)
             
         self.update_knowledgebase(key=config["topic"], predicates=true_predicates, instances=instances)
         self.update_knowledgebase(key=config["topic"], predicates=false_predicates, truth_value=0)
@@ -87,8 +81,34 @@ class PlanningWorldState(object):
                 res.append((i[0],self.__get_arguments(element["arguments"], msg)))
         return res
         
+    def _create_predicates(self, data, msg=None):
+        true_predicates = []
+        false_predicates = []
+        for p in data.items():
+            arg = []
+            tv = []
+            argument_list = [p[1]] if not isinstance(p[1],list) else p[1]
+            for element in argument_list:
+                try:
+                    arg.append(self.__get_arguments(element["arguments"], msg))
+                except KeyError:
+                    arg.append(tuple())
+                tv.append(element["truth_value"])
+                    
+            for x, y in zip(tv, arg):
+                try:
+                    truth_value = eval(x["comparison"].replace("$attribute", str(attrgetter(x["attribute"])(msg))))
+                except TypeError:
+                    # Cannot make comparison, assuming static truth value
+                    truth_value = bool(x)
+                if truth_value:                
+                    true_predicates.append((p[0],y))
+                else:
+                    false_predicates.append((p[0],y))
+        return true_predicates, false_predicates
+        
     def __get_arguments(self, arguments, data=None):
-        res = []        
+        res = []
         for a in arguments:
             try:
                 if data == None:
