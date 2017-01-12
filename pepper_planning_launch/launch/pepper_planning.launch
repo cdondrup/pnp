@@ -11,10 +11,6 @@
   <node name="planning_world_state_manager" pkg="pepper_world_state_kb" type="world_state.py" output="screen" respawn="true">
     <param name="config_file" type="string" value="$(arg kb_config_file)"/>
   </node>
-  <node name="take_picture" pkg="pepper_task_actions" type="take_picture.py" output="screen" respawn="true"/>
-  <node name="give_voucher" pkg="pepper_task_actions" type="give_voucher.py" output="screen" respawn="true">
-    <param name="semantic_map_name" type="string" value="$(arg semantic_map_name)"/>
-  </node>
   <node name="say" pkg="pepper_speak" type="speak.py" output="screen" respawn="true"/>
 
   <include file="$(find pepper_move_base)/launch/pepper_move_base.launch">

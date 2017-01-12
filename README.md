@@ -23,6 +23,5 @@ Thsis repository contains all the the actions that can be executd by the ROSPlan
 
 ## Other packages
 
-* `pepper_task_actions` contains dialogue tasks like giving vouchers and taking selfies.
 * `pepper_planning_launch` contains launch files and a tmux script to start the whole system. Please, have a look at the README of this package for mor information how to use the tmux script.
 * `pepper_control` contains scripts and servers to automatically add goals to the planning system and control the planning loops.
