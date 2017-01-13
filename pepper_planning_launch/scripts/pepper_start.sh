@@ -31,7 +31,7 @@ tmux select-window -t $SESSION:3
 tmux send-keys "DISPLAY=:0 roslaunch rosplan_planning_system planning_system_knowledge.launch domain_path:=$(rospack find rosplan_examples)/share/greet.pddl persistent:=true"
 
 tmux select-window -t $SESSION:4
-tmux send-keys "DISPLAY=:0 rosrun mummer_dialogue parser.py"
+tmux send-keys "DISPLAY=:0 roslaunch mummer_dialogue_launch mummer_dialogue.launch semantic_map_name:=my_map"
 
 tmux select-window -t $SESSION:5
 tmux send-keys "DISPLAY=:0 roslaunch pepper_planning_launch pepper_planning.launch semantic_map_name:=my_map"
@@ -40,7 +40,7 @@ tmux select-window -t $SESSION:6
 tmux send-keys "DISPLAY=:0 rosrun semantic_map_transform_publisher transform_publisher.py"
 
 tmux select-window -t $SESSION:7
-tmux send-keys "DISPLAY=:0 roslaunch pepper_planning_launch pepper_control.launch semantic_map_name:=my_map"
+tmux send-keys "DISPLAY=:0 roslaunch pepper_planning_launch pepper_control.launch semantic_map_name:=my_map logo_app:=my_mummer_logo_app_id localisation_dir:=my_panorama"
 
 # Set default window
 tmux select-window -t $SESSION:0
