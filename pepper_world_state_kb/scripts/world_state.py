@@ -8,6 +8,7 @@ from rosplan_knowledge_msgs.srv import KnowledgeUpdateServiceArray, KnowledgeUpd
 from rosplan_knowledge_msgs.msg import KnowledgeItem
 from diagnostic_msgs.msg import KeyValue
 from rosplan_knowledge_msgs.srv import GetDomainPredicateDetailsService, GetInstanceService
+from std_srvs.srv import Empty, EmptyResponse, EmptyRequest
 import yaml
 from operator import attrgetter
 
@@ -31,6 +32,8 @@ class PlanningWorldState(object):
         t,f = self._create_predicates(config["static_predicates"])
         self.update_knowledgebase(predicates=t)
         self.update_knowledgebase(predicates=f, truth_value=0)
+        rospy.loginfo("Starting reset service")
+        self.srv = rospy.Service("~reset_kb", Empty, lambda x:self.reset_cb(x, config))
         self.subscribers = []
         for inputs in config["inputs"]:
             rospy.loginfo("Subsribing to '%s'." % inputs["topic"])
@@ -47,6 +50,18 @@ class PlanningWorldState(object):
                 )
             )
         rospy.loginfo("... done")
+        
+    def reset_cb(self, msg, config):
+        rospy.loginfo("Resetting knowledge base. Clearing current knowledge.")
+        self.__call_service("/kcl_rosplan/clear_knowledge_base", Empty, EmptyRequest())
+        self.__last_request = {}
+        rospy.loginfo("Inserting static instances.")
+        self.update_knowledgebase(instances=self._create_instances(config["static_instances"]))
+        rospy.loginfo("Inserting static predicates.")
+        t,f = self._create_predicates(config["static_predicates"])
+        self.update_knowledgebase(predicates=t)
+        self.update_knowledgebase(predicates=f, truth_value=0)
+        return EmptyResponse()
         
     def callback(self, msg, config):
         data_field = attrgetter(config["base_attribute"])(msg) if config["base_attribute"] != "" else msg
