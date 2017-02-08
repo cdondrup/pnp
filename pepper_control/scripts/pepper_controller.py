@@ -249,7 +249,17 @@ class PepperController(object):
             )
         except:
             rospy.logwarn("Could not start logo app. Service responded with error.")
+    
+    def start_idle(self):
+        self.is_idle = True
+        t = Thread(target=self.idle, args=())
+        t.start()
+        return t
         
+    def stop_idle(self, thread):
+        self.is_idle = False
+        thread.join()
+    
     def spin(self):
         self.wake_up()
         self.stand()
@@ -264,16 +274,13 @@ class PepperController(object):
             while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][PRECONDITION]):
                 rospy.sleep(1.0)
             rospy.loginfo("Starting execution of '%s'" % action)
-            self.is_idle = True
-            t = Thread(target=self.idle, args=())
-            t.start()
+            t = self.start_idle()
             self.pnp_state = ""
             while not rospy.is_shutdown() and self.pnp_state != "goal":
                 rospy.loginfo("Executing '%s'" % action)
                 self.clients[action][CLIENT].send_goal_and_wait(self.clients[action][ACTIONGOAL])
                 rospy.sleep(1.0)
-            self.is_idle = False
-            t.join()
+            self.stop_idle(t)
             rospy.loginfo("Waiting for goal state to be true")
             while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][GOAL]):
                 rospy.sleep(1.0)
