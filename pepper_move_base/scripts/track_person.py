@@ -24,7 +24,7 @@ class PeopleTracking(object):
         self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
     
     def start(self):
-        PeopleTracking.sub = rospy.Subscriber("/naoqi_driver_node/people_detected", PersonDetectedArray, self.callback)
+        PeopleTracking.sub = rospy.Subscriber("/naoqi_driver_node/people_detected", PersonDetectedArray, self.callback, queue_size=1)
         
     def stop(self):
         PeopleTracking.sub.unregister()
@@ -34,6 +34,7 @@ class PeopleTracking(object):
         for p in msg.person_array:
             if p.id == int(self.id):
                 try:
+#                    self.listener.waitForTransform(self.target_frame, msg.header.frame_id, msg.header.stamp, rospy.Duration(0.2))
                     t = self.listener.getLatestCommonTime(self.target_frame, msg.header.frame_id)
                     p_pose = PoseStamped(header=msg.header, pose=p.person.position)
                     p_pose.header.stamp = t
@@ -43,11 +44,12 @@ class PeopleTracking(object):
                 else:
                     theta = math.atan2(bl_pose.pose.position.y, bl_pose.pose.position.x)
                     t = Twist()                    
-                    if np.abs(theta) > 0.1:
+                    if np.abs(theta) > 0.5:
                         t.angular.z = theta
                     self.pub.publish(t)
                 finally:
-                    break
+                    return
+        self.pub.publish(Twist())
                     
     def _call_service(self, srv_name, srv_type, req):
         while not rospy.is_shutdown():
