@@ -46,7 +46,7 @@ class MoveBase(object):
         else:
             bl_pose = target_pose
         if bl_pose != None:
-            self.__call_service("/naoqi_driver/motion/move_to", GoToPose, GoToPoseRequest(pose=bl_pose))
+            self.__call_service("/naoqi_driver/navigation/navigate_to", GoToPose, GoToPoseRequest(pose=bl_pose))
             self._as.set_succeeded()
         else:
             self._as.set_aborted()
