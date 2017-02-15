@@ -54,7 +54,11 @@ class PlanningWorldState(object):
     def reset_cb(self, msg, config):
         rospy.loginfo("Resetting knowledge base. Clearing current knowledge.")
         self.__call_service("/kcl_rosplan/clear_knowledge_base", Empty, EmptyRequest())
-        self.__last_request = {}
+        for inputs in config["inputs"]:
+            self.__last_request[inputs["topic"]] = {
+                0: KnowledgeUpdateServiceArrayRequest(),
+                1: KnowledgeUpdateServiceArrayRequest()
+            }
         rospy.loginfo("Inserting static instances.")
         self.update_knowledgebase(instances=self._create_instances(config["static_instances"]))
         rospy.loginfo("Inserting static predicates.")
