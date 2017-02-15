@@ -7,6 +7,7 @@ project(pepper_control)
 find_package(catkin REQUIRED COMPONENTS
   actionlib
   actionlib_msgs
+  dynamic_reconfigure
   pepper_goal_server
   rosplan_knowledge_msgs
   rospy
@@ -52,6 +53,10 @@ find_package(catkin REQUIRED COMPONENTS
 #   Message1.msg
 #   Message2.msg
 # )
+
+generate_dynamic_reconfigure_options(
+  cfg/PepperControl.cfg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(

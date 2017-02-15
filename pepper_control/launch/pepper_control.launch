@@ -2,10 +2,12 @@
   <arg name="config_file" default="$(find pepper_control)/conf/goals.yaml"/>
   <arg name="localisation_dir" default=""/>
   <arg name="logo_app" default="showmummerlogo-a897b8/behavior_1"/>
+  <arg name="once" default="false"/>
 
-  <node pkg="pepper_control" type="pepper_controller.py" name="pepper_controller" output="screen" respawn="true">
+  <node pkg="pepper_control" type="pepper_controller.py" name="pepper_controller" output="screen" respawn="false">
     <param name="config_file" value="$(arg config_file)" type="string"/>
     <param name="localisation_dir" value="$(arg localisation_dir)" type="string"/>
     <param name="logo_app" value="$(arg logo_app)" type="string"/>
+    <param name="once" value="$(arg once)" type="bool"/>
   </node>
 </launch>

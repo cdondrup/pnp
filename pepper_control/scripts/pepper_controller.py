@@ -9,6 +9,8 @@ import rostopic
 import roslib
 import yaml
 from actionlib import SimpleActionClient
+from pepper_control.cfg import PepperControlConfig
+from dynamic_reconfigure.server import Server as DynServer
 from rosplan_knowledge_msgs.srv import KnowledgeQueryService, KnowledgeQueryServiceRequest
 from rosplan_knowledge_msgs.msg import KnowledgeItem
 from rosplan_knowledge_msgs.srv  import GetDomainPredicateDetailsService
@@ -40,11 +42,13 @@ class PepperController(object):
         rospy.on_shutdown(self.__on_shut_down)
         self.pnp_state = ""
         rospy.Subscriber("/rosplan_bridge/current_state", String, self.callback)
+        DynServer(PepperControlConfig, self.dyn_callback)
         with open(rospy.get_param("~config_file"), 'r') as f:
             config = yaml.load(f)
         print config
         self.localisation_dir = rospy.get_param("~localisation_dir", "")
         self.logo_app = rospy.get_param("~logo_app", "showmummerlogo-a897b8/behavior_1")
+        self.once = rospy.get_param("~once", False)
         self.clients = OrderedDict()
         self.client_probabilities = []
         for k, v in config.items():
@@ -64,6 +68,13 @@ class PepperController(object):
     def callback(self, msg):
         print "received", msg
         self.pnp_state = msg.data
+    
+    def dyn_callback(self, config, level):
+        self.pitch_range = config["pitch_range"]
+        self.pitch_offset = config["pitch_offset"]
+        self.yaw_range = config["yaw_range"]
+        print config
+        return config
         
     def get_goal_type(self, action_name):
         while not rospy.is_shutdown():
@@ -160,11 +171,11 @@ class PepperController(object):
         pub = rospy.Publisher("/joint_angles", JointAnglesWithSpeed, queue_size=10)
         while not rospy.is_shutdown() and self.is_idle:
             try:
+#                rospy.sleep(5.)
+#                raise rospy.ROSException
                 rospy.wait_for_message("/naoqi_driver_node/people_detected", PersonDetectedArray, timeout=5.)
             except rospy.ROSException, rospy.ROSInterruptException:
-#                j.joint_angles[0] *= -1.
-#                j.joint_angles[1] = np.random.rand()-.5
-                j.joint_angles = [np.random.rand()-.5, -(np.random.rand()*.6)]
+                j.joint_angles = [(np.random.rand()-.5)*self.yaw_range, -(np.random.rand()*self.pitch_range+self.pitch_offset)]
                 pub.publish(j)
                 
     def localise_robot(self, ldir):
@@ -266,13 +277,16 @@ class PepperController(object):
         self.show_logo(True)
         self.set_breathing(True)
         self.localise_robot(self.localisation_dir)
+        cnt = 0
         while not rospy.is_shutdown():
+            print self.once
             self.stand()
             action = np.random.choice(self.clients.keys(), p=self.client_probabilities)
             rospy.loginfo("Chose '%s' for execution" % action)
             rospy.loginfo("Checking precondition '%s'" % self.clients[action][PRECONDITION])
             while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][PRECONDITION]):
                 rospy.sleep(1.0)
+            if self.once and cnt >= 1: break
             rospy.loginfo("Starting execution of '%s'" % action)
             t = self.start_idle()
             self.pnp_state = ""
@@ -287,6 +301,7 @@ class PepperController(object):
             rospy.loginfo("Goal '%s' achieved" % self.clients[action][GOAL])
             self.pnp_state = ""
             self.stand()
+            cnt += 1
             
     def __on_shut_down(self):
         self.set_breathing(False)
@@ -303,4 +318,6 @@ if __name__ == "__main__":
     rospy.init_node("pepper_controller")
     p = PepperController(rospy.get_name())
     p.spin()
-
+#    p.wake_up()
+#    p.stand()
+#    p.start_idle()
