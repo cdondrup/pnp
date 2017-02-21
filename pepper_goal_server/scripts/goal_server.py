@@ -32,7 +32,6 @@ class GoalServer(object):
         rospy.loginfo("... done")
 
     def execute_cb(self, goal):
-        self.__call_service("/kcl_rosplan/clear_goals", Empty, EmptyRequest())
         self.add_goal(self.planning_goal)
         tries = goal.tries if goal.tries > 1 else float("inf")
         cnt = 0
@@ -42,6 +41,7 @@ class GoalServer(object):
             and not rospy.is_shutdown():
             self._as.publish_feedback(GoalServerFeedback(cnt))
             rospy.sleep(goal.timeout)
+            self.add_goal(self.planning_goal)
             cnt += 1
         else:
             self._as.set_aborted()
@@ -49,13 +49,17 @@ class GoalServer(object):
         self._as.set_succeeded()
         
     def add_goal(self, goal):
+        self.__call_service("/kcl_rosplan/clear_goals", Empty, EmptyRequest())
+        self.__add_goal(self.planning_goal)
+    
+    def __add_goal(self, goal):
         srv_name = "/kcl_rosplan/update_knowledge_base_array"
         req = KnowledgeUpdateServiceArrayRequest()
         req.update_type = req.ADD_GOAL
         goal = [goal] if not isinstance(goal,list) else goal
         for p in goal:
             cond = p.split("__")
-            rospy.loginfo("Adding %s" % str(p))
+#            rospy.loginfo("Adding %s" % str(p))
             tp = self._get_predicate_details(cond[0]).predicate.typed_parameters
             if len(tp) != len(cond[1:]):
                 rospy.logerr("Fact '%s' should have %s parameters but has only %s as parsed from: '%s'" % (cond[0], len(tp), len(cond[1:])))
