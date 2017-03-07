@@ -10,11 +10,11 @@ This package contains several launch files to start the the components and a tmu
 * `move_config_file` _Default: `$(find pepper_move_base)/conf/distances.yaml`_: The file defining the qualitative distances for the qualitative_move script.
 * `kb_config_file` _Default: `$(find pepper_world_state_kb)/conf/parsing.yaml`_: The config file for the KB world state update script.
 
-`pepper_control.launch` starts all the necessary controll scripts that add goals and take care of the planning. Parameters:
+`pepper_planning_control.launch` starts all the necessary controll scripts that add goals and take care of the planning. Parameters:
 
 * `semantic_map_name`: The name of the semantic map in mongodb.
 * `goal_config_file` _Default: `$(find pepper_goal_server)/conf/goals.yaml`_: The goal server config file.
-* `control_config_file` _Default: `$(find pepper_control)/conf/goals.yaml`_: The control server config file.
+* `control_config_file` _Default: `$(find pepper_planning_control)/conf/goals.yaml`_: The control server config file.
 
 ## Using the tmux script
 

@@ -9,7 +9,7 @@ import rostopic
 import roslib
 import yaml
 from actionlib import SimpleActionClient
-from pepper_control.cfg import PepperControlConfig
+from pepper_planning_control.cfg import PepperPlanningControlConfig
 from dynamic_reconfigure.server import Server as DynServer
 from rosplan_knowledge_msgs.srv import KnowledgeQueryService, KnowledgeQueryServiceRequest
 from rosplan_knowledge_msgs.msg import KnowledgeItem
@@ -42,7 +42,7 @@ class PepperController(object):
         rospy.on_shutdown(self.__on_shut_down)
         self.pnp_state = ""
         rospy.Subscriber("/rosplan_bridge/current_state", String, self.callback)
-        DynServer(PepperControlConfig, self.dyn_callback)
+        DynServer(PepperPlanningControlConfig, self.dyn_callback)
         with open(rospy.get_param("~config_file"), 'r') as f:
             config = yaml.load(f)
         print config
@@ -315,7 +315,7 @@ class PepperController(object):
 
 
 if __name__ == "__main__":
-    rospy.init_node("pepper_controller")
+    rospy.init_node("pepper_planning_controller")
     p = PepperController(rospy.get_name())
     p.spin()
 #    p.wake_up()
