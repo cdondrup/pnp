@@ -37,10 +37,7 @@ class PlanningWorldState(object):
         self.subscribers = []
         for inputs in config["inputs"]:
             rospy.loginfo("Subsribing to '%s'." % inputs["topic"])
-            self.__last_request[inputs["topic"]] = {
-                0: KnowledgeUpdateServiceArrayRequest(),
-                1: KnowledgeUpdateServiceArrayRequest()
-            }
+            self.__last_request[inputs["topic"]] = {0: [], 1: []}
             self.subscribers.append(
                 rospy.Subscriber(
                     name=inputs["topic"], 
@@ -55,10 +52,7 @@ class PlanningWorldState(object):
         rospy.loginfo("Resetting knowledge base. Clearing current knowledge.")
         self.__call_service("/kcl_rosplan/clear_knowledge_base", Empty, EmptyRequest())
         for inputs in config["inputs"]:
-            self.__last_request[inputs["topic"]] = {
-                0: KnowledgeUpdateServiceArrayRequest(),
-                1: KnowledgeUpdateServiceArrayRequest()
-            }
+            self.__last_request[inputs["topic"]] = {0: [], 1: []}
         rospy.loginfo("Inserting static instances.")
         self.update_knowledgebase(instances=self._create_instances(config["static_instances"]))
         rospy.loginfo("Inserting static predicates.")
@@ -87,7 +81,7 @@ class PlanningWorldState(object):
             else:
                 true_predicates.extend(t)
                 false_predicates.extend(f)
-            
+         
         self.update_knowledgebase(key=config["topic"], predicates=true_predicates, instances=instances)
         self.update_knowledgebase(key=config["topic"], predicates=false_predicates, truth_value=0)
         self.decay(instances)
@@ -143,7 +137,7 @@ class PlanningWorldState(object):
         :param truth_value: (int) -1 (unknown), 0 (false), 1 (true)
         """
         req = KnowledgeUpdateServiceArrayRequest()
-        req.update_type = req.ADD_KNOWLEDGE if truth_value else req.REMOVE_KNOWLEDGE
+        req.update_type = req.ADD_KNOWLEDGE if truth_value == 1 else req.REMOVE_KNOWLEDGE
         
         if instances != None:
             instances = [instances] if not isinstance(instances,list) else instances
@@ -174,13 +168,14 @@ class PlanningWorldState(object):
     
         if req.knowledge:
             try:
-                if not self.__compare_knowledge_items(self.__last_request[key][truth_value].knowledge, req.knowledge):
+                if not self.__compare_knowledge_items(self.__last_request[key][truth_value], req.knowledge):
                     self.__call_service(
                         self.__update_srv_name,
                         KnowledgeUpdateServiceArray,
                         req
                     )
-                self.__last_request[key][truth_value] = req
+                self.__last_request[key][truth_value] = req.knowledge
+                self.__check_last_req(req.knowledge, key, (truth_value-1)*-1)
             except KeyError:
                 self.__call_service(
                     self.__update_srv_name,
@@ -231,6 +226,12 @@ class PlanningWorldState(object):
         for e1, e2 in zip(k1, k2):
             if e1 != e2: return False
         return True
+        
+    def __check_last_req(self, new, key, truth_value):
+        for e in new:
+            if e in self.__last_request[key][truth_value]:
+                self.__last_request[key][truth_value] = []
+                return
         
 if __name__ == "__main__":
     rospy.init_node("planning_world_state_manager")
