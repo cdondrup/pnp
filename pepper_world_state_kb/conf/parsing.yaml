@@ -65,6 +65,37 @@ static_predicates:
       - value: "close"
       truth_value: true
 inputs:
+  - topic: "/wp2/track"
+    base_attribute: "data"
+    data:
+      instances:
+        id: 
+          arguments:
+            - format: "id_%s"
+              attribute: "person_id"
+      predicates:
+        face_detected:
+          arguments:
+            - format: "id_%s"
+              attribute: "person_id"
+          truth_value:
+            attribute: "is_face_detected"
+            comparison: "$attribute == True"
+        robot_distance:
+          - arguments:
+            - format: "id_%s"
+              attribute: "person_id"
+            - value: "close"
+            truth_value:
+              attribute: "head_distance"
+              comparison: "$attribute > 0.0 and $attribute < 1.5"
+          - arguments:
+            - format: "id_%s"
+              attribute: "person_id"
+            - value: "far"
+            truth_value:
+              attribute: "head_distance"
+              comparison: "$attribute >= 1.5"
   - topic: "/naoqi_driver_node/people_detected"
     base_attribute: "person_array"
     data:
@@ -74,13 +105,6 @@ inputs:
             - format: "id_%s"
               attribute: "id"
       predicates:
-        face_detected:
-          arguments:
-            - format: "id_%s"
-              attribute: "id"
-          truth_value:
-            attribute: "person.face_detected"
-            comparison: "$attribute == True"
         is_waving:
           arguments:
             - format: "id_%s"
@@ -88,28 +112,29 @@ inputs:
           truth_value:
             attribute: "person.is_waving"
             comparison: "$attribute == True"
+  - topic: "/engagement"
+    base_attribute: "engagement_array"
+    data:
+      instances:
+        id: 
+          arguments:
+            - format: "id_%s"
+              attribute: "id"
+      predicates:
         looking_at_robot:
           arguments:
             - format: "id_%s"
               attribute: "id"
           truth_value:
-            attribute: "gaze.looking_at_robot"
+            attribute: "bAttention"
             comparison: "$attribute == True"
-        robot_distance:
-          - arguments:
+        wants_to_interact:
+          arguments:
             - format: "id_%s"
               attribute: "id"
-            - value: "close"
-            truth_value:
-              attribute: "person.distance"
-              comparison: "$attribute > 0.0 and $attribute < 1.5"
-          - arguments:
-            - format: "id_%s"
-              attribute: "id"
-            - value: "far"
-            truth_value:
-              attribute: "person.distance"
-              comparison: "$attribute >= 1.5"
+          truth_value:
+            attribute: "dWillingnessToInteract"
+            comparison: "$attribute >= 0.6"
   - topic: "/naoqi_driver_node/battery"
     base_attribute: ""
     data:
