@@ -276,7 +276,7 @@ class PepperController(object):
         self.stand()
         self.show_logo(True)
         self.set_breathing(True)
-        self.localise_robot(self.localisation_dir)
+#        self.localise_robot(self.localisation_dir)
         cnt = 0
         while not rospy.is_shutdown():
             print self.once
@@ -305,11 +305,11 @@ class PepperController(object):
             
     def __on_shut_down(self):
         self.set_breathing(False)
-        self.__call_service(
-            "/naoqi_driver/localization/stop_all",
-            Empty,
-            EmptyRequest()
-        )
+#        self.__call_service(
+#            "/naoqi_driver/localization/stop_all",
+#            Empty,
+#            EmptyRequest()
+#        )
         self.show_logo(False)
         self.rest()
 

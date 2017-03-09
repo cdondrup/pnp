@@ -12,6 +12,8 @@ from nao_interaction_msgs.srv import LocalizationTrigger, LocalizationTriggerReq
 from nao_interaction_msgs.srv import LocalizationCheck, LocalizationCheckRequest
 from nao_interaction_msgs.srv import LocalizationGetErrorMessage, LocalizationGetErrorMessageRequest
 from std_srvs.srv import Empty, EmptyRequest
+from geometry_msgs.msg import PoseStamped
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 
 
 class GoHome(object):
@@ -27,25 +29,35 @@ class GoHome(object):
         self.stop_client = SimpleActionClient("/stop_tracking_person", TrackPersonAction)
         self.stop_client.wait_for_server()
         rospy.loginfo("Tracker client connected")
+        self.client = SimpleActionClient("move_base", MoveBaseAction)
+        rospy.loginfo("Waiting for move_base client.")
+        self.client.wait_for_server()
+        rospy.loginfo("Move base client connected")
         self._ps.register_preempt_callback(self.preempt_cb)
         self._ps.start()
         rospy.loginfo("... done")
 
     def execute_cb(self, goal):
         self.stop_client.send_goal(TrackPersonGoal())
-        if self.__call_service("/naoqi_driver/localization/is_data_available", LocalizationCheck, LocalizationCheckRequest()).result:
-            while not rospy.is_shutdown() and not self._ps.is_preempt_requested():
-                rospy.loginfo("Robot returning home")
-                res = self.__call_service(
-                    "/naoqi_driver/localization/go_to_home",
-                    LocalizationTrigger,
-                    LocalizationTriggerRequest()
-                )
-                if res.result != 0:
-                    rospy.logwarn(self.__get_error_message(res.result))
-                break
-        else:
-            rospy.logwarn("Cannot go home. Pepper has never been localised.")
+        
+        home = PoseStamped()
+        home.header.frame_id = "semantic_map"
+        rospy.loginfo("Going home")
+        self.client.send_goal_and_wait(MoveBaseGoal(target_pose=home))
+        
+#        if self.__call_service("/naoqi_driver/localization/is_data_available", LocalizationCheck, LocalizationCheckRequest()).result:
+#            while not rospy.is_shutdown() and not self._ps.is_preempt_requested():
+#                rospy.loginfo("Robot returning home")
+#                res = self.__call_service(
+#                    "/naoqi_driver/localization/go_to_home",
+#                    LocalizationTrigger,
+#                    LocalizationTriggerRequest()
+#                )
+#                if res.result != 0:
+#                    rospy.logwarn(self.__get_error_message(res.result))
+#                break
+#        else:
+#            rospy.logwarn("Cannot go home. Pepper has never been localised.")
             
         res = GoHomeResult()
         res.result.append(ActionResult(cond="robot_at_home", truth_value=True))
