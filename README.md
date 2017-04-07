@@ -1,6 +1,8 @@
 # The pnp servers repository
 
-Thsis repository contains all the the actions that can be executd by the ROSPlan - PNP execution framework. In the following you can find a list of the actions.
+This repository contains all the the actions that can be executd by the ROSPlan - PNP execution framework. In the following you can find a list of the actions.
+
+For installation and usage instructions, please visit: http://protolab.aldebaran.com:9000/mummer/documentations/wikis/wp4-demo-system
 
 ## PNP actions
 
