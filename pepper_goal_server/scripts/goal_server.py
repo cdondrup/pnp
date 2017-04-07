@@ -60,15 +60,19 @@ class GoalServer(object):
         for p in goal:
             cond = p.split("__")
 #            rospy.loginfo("Adding %s" % str(p))
-            tp = self._get_predicate_details(cond[0]).predicate.typed_parameters
-            if len(tp) != len(cond[1:]):
-                rospy.logerr("Fact '%s' should have %s parameters but has only %s as parsed from: '%s'" % (cond[0], len(tp), len(cond[1:])))
-                return
-            req.knowledge.append(KnowledgeItem(
-                knowledge_type=KnowledgeItem.FACT,
-                attribute_name=cond[0],
-                values=[KeyValue(key=str(k.key), value=str(v)) for k,v in zip(tp, cond[1:])]
-            ))
+            try:
+                tp = self._get_predicate_details(cond[0]).predicate.typed_parameters
+            except AttributeError as e:
+                rospy.logwarn(e)
+            else:
+                if len(tp) != len(cond[1:]):
+                    rospy.logerr("Fact '%s' should have %s parameters but has only %s as parsed from: '%s'" % (cond[0], len(tp), len(cond[1:])))
+                    return
+                req.knowledge.append(KnowledgeItem(
+                    knowledge_type=KnowledgeItem.FACT,
+                    attribute_name=cond[0],
+                    values=[KeyValue(key=str(k.key), value=str(v)) for k,v in zip(tp, cond[1:])]
+                ))
 
         while not rospy.is_shutdown():
             try:
