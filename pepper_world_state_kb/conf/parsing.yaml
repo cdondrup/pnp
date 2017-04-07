@@ -40,6 +40,14 @@ static_instances:
       - value: "sid_7"
     - arguments:
       - value: "sid_8"
+    - arguments:
+      - value: "sid_9"
+    - arguments:
+      - value: "sid_10"
+    - arguments:
+      - value: "sid_11"
+    - arguments:
+      - value: "sid_12"
   waypoint:
     - arguments:
       - value: "waypoint1"
