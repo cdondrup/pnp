@@ -19,7 +19,7 @@ class MoveBase(object):
         self.listener = tf.TransformListener()
         self.robot_pose = None
         rospy.Subscriber(self.odom_topic, Odometry, self.odom_cb)
-        self.target_frame = rospy.get_param("~target_frame", "base_link")
+        self.target_frame = rospy.get_param("~target_frame", "base_footprint")
 #        self.pub = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=10)
         self._as = SimpleActionServer(name, MoveBaseAction, self.execute_cb, auto_start=False)
         self._as.start()
