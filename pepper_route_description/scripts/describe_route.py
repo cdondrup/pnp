@@ -138,6 +138,7 @@ class DescribeRoute(object):
         t.max_speed_fraction = 0.5
         t.target.x = target.pose.position.x
         t.target.y = target.pose.position.y
+        t.target.z = 1.0
         s1 = ServiceThread("/naoqi_driver/tracker/point_at", TrackerPointAt, t)
         self.set_breathing(False)
         s1.start()
@@ -150,6 +151,7 @@ class DescribeRoute(object):
         t.max_speed_fraction = 0.6
         t.target.x = target.pose.position.x
         t.target.y = target.pose.position.y
+        t.target.z = 1.0
         s2 = ServiceThread("/naoqi_driver/tracker/look_at", TrackerLookAt, t)
         s2.start()
         s1.join()
