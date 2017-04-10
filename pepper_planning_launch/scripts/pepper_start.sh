@@ -2,9 +2,21 @@
 
 SESSION=$USER
 
+check_session=`tmux ls |grep $SESSION`
+if [ -n "$check_session" ]; then
+	echo -e "\e[1m\e[31m+++ ERROR: tmux session with name $SESSION is already running. +++\e[0m"
+	echo "Try:"
+	echo
+	echo -e "\ttmux a -t $SESSION"
+	echo
+	echo "to attach to it and either keep on using this session or close all the terminals (Ctrl+C and Ctrl+D) and rerun this script."
+	echo
+	exit
+fi
+
 tmux -2 new-session -d -s $SESSION
 # Setup a window for tailing log files
-tmux new-window -t $SESSION:0 -n 'roscore'
+tmux rename-window -t $SESSION:0 'roscore'
 tmux new-window -t $SESSION:1 -n 'mongodb'
 tmux new-window -t $SESSION:2 -n 'robot'
 tmux new-window -t $SESSION:3 -n 'wp2'
@@ -52,8 +64,7 @@ tmux send-keys "DISPLAY=:0 roslaunch pepper_planning_launch pepper_planning_cont
 
 # Set default window
 tmux select-window -t $SESSION:0
+tmux setw -g mode-mouse off
 
 # Attach to session
 tmux -2 attach-session -t $SESSION
-
-tmux setw -g mode-mouse off
