@@ -51,7 +51,7 @@ tmux select-window -t $SESSION:5
 tmux send-keys "DISPLAY=:0 roslaunch rosplan_planning_system planning_system_knowledge.launch domain_path:=$(rospack find rosplan_examples)/share/greet.pddl persistent:=true"
 
 tmux select-window -t $SESSION:6
-tmux send-keys "DISPLAY=:0 roslaunch mummer_dialogue_launch mummer_dialogue.launch semantic_map_name:=my_map"
+tmux send-keys "DISPLAY=:0 roslaunch mummer_dialogue_launch mummer_dialogue.launch semantic_map_name:=my_map quiz_app:=quiz_app_id"
 
 tmux select-window -t $SESSION:7
 tmux send-keys "DISPLAY=:0 roslaunch pepper_planning_launch pepper_planning.launch semantic_map_name:=my_map"
