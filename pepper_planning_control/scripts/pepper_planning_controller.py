@@ -46,7 +46,7 @@ class PepperController(object):
         with open(rospy.get_param("~config_file"), 'r') as f:
             config = yaml.load(f)
         print config
-        self.localisation_dir = rospy.get_param("~localisation_dir", "")
+#        self.localisation_dir = rospy.get_param("~localisation_dir", "")
         self.logo_app = rospy.get_param("~logo_app", "showmummerlogo-a897b8/behavior_1")
         self.once = rospy.get_param("~once", False)
         self.clients = OrderedDict()
@@ -178,20 +178,20 @@ class PepperController(object):
                 j.joint_angles = [(np.random.rand()-.5)*self.yaw_range, -(np.random.rand()*self.pitch_range+self.pitch_offset)]
                 pub.publish(j)
                 
-    def localise_robot(self, ldir):
-        if ldir != "":
-            rospy.loginfo("Loading localisation data from: '%s'" % ldir)
-            res = self.__call_service(
-                "/naoqi_driver/localization/load",
-                LocalizationTriggerString,
-                LocalizationTriggerStringRequest(self.localisation_dir)
-            )
-            if res.result != 0:
-                rospy.logwarn(self.__get_error_message(res.result))
-            else:
-                return
-        
-        self.__localise(ldir)
+#    def localise_robot(self, ldir):
+#        if ldir != "":
+#            rospy.loginfo("Loading localisation data from: '%s'" % ldir)
+#            res = self.__call_service(
+#                "/naoqi_driver/localization/load",
+#                LocalizationTriggerString,
+#                LocalizationTriggerStringRequest(self.localisation_dir)
+#            )
+#            if res.result != 0:
+#                rospy.logwarn(self.__get_error_message(res.result))
+#            else:
+#                return
+#        
+#        self.__localise(ldir)
                         
     def __localise(self, ldir):
         ldir = ldir if ldir != "" else time.strftime("loc_%Y_%m_%d_%H_%M_%S")
