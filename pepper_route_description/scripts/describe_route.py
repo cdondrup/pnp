@@ -30,7 +30,7 @@ class ServiceThread(threading.Thread):
         self.srv_name = srv_name
         self.srv_type = srv_type
         self.srv_req = srv_req
-        
+
     def run(self):
         while not rospy.is_shutdown():
             try:
@@ -49,8 +49,11 @@ class ServiceThread(threading.Thread):
 
 class DescribeRoute(object):
     BASE_LINK = "base_link"
+
     def __init__(self, name):
         rospy.loginfo("Starting %s ..." % name)
+        self.odom = None
+        rospy.Subscriber("/naoqi_driver_node/odom", Odometry, self.odom_cb)
         self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
         self._as = PNPSimplePluginServer(
             name,
@@ -72,7 +75,7 @@ class DescribeRoute(object):
         self.start_client.wait_for_server()
         self.stop_client = SimpleActionClient("/stop_tracking_person", TrackPersonAction)
         self.stop_client.wait_for_server()
-        rospy.loginfo("Tracker client connected")        
+        rospy.loginfo("Tracker client connected")
         self.db_name = rospy.get_param("~db_name", "semantic_map")
         self.collection_name = rospy.get_param("~collection_name", "idea_park")
         self.semantic_map_name = rospy.get_param("~semantic_map_name")
@@ -81,22 +84,22 @@ class DescribeRoute(object):
         self.tts = rospy.Publisher("/speech", String, queue_size=1)
         self.joints = rospy.Publisher("/joint_angles", JointAnglesWithSpeed, queue_size=10)
         rospy.loginfo("... done")
-        
+
     def stand(self):
         print "STANDING"
         self.__call_service(
-            "/naoqi_driver/robot_posture/go_to_posture", 
-            GoToPosture, 
+            "/naoqi_driver/robot_posture/go_to_posture",
+            GoToPosture,
             GoToPostureRequest(GoToPostureRequest.STAND_INIT, 0.5)
         )
         j = JointAnglesWithSpeed()
         j.joint_names = ['HeadYaw', 'HeadPitch']
-        j.joint_angles = [0.,-.5]
+        j.joint_angles = [0., -.5]
         j.speed = .05
         self.joints.publish(j)
-        
+
     def __call_service(self, srv_name, srv_type, req):
-         while not rospy.is_shutdown():
+        while not rospy.is_shutdown():
             try:
                 s = rospy.ServiceProxy(
                     srv_name,
@@ -109,23 +112,27 @@ class DescribeRoute(object):
             else:
                 return s(req)
 
+    def odom_cb(self, msg):
+        self.odom = msg
+
     def execute_cb(self, goal):
         self.stop_client.send_goal(TrackPersonGoal())
         shop_id = goal.shop_id.split('_')[1]
         result = self.db[self.collection_name].find_one(
             {
-                "shop_id": shop_id, 
+                "shop_id": shop_id,
                 "semantic_map_name": self.semantic_map_name
             }
         )
-        
+
         rospy.loginfo("Waiting for current pose from odometry.")
-        o = rospy.wait_for_message("/naoqi_driver_node/odom", Odometry)        
+        while self.odom is None: rospy.sleep(0.01)
+        o = self.odom
         current_pose = PoseStamped()
         current_pose.header = o.header
         current_pose.pose = o.pose.pose
         rospy.loginfo("Received pose.")
-        
+
         loc = PoseStamped()
         loc.header.frame_id = "semantic_map"
         loc.pose.position.x = float(result["loc_x"])
@@ -162,9 +169,9 @@ class DescribeRoute(object):
         current_pose.pose.position.x = 0.
         current_pose.pose.position.y = 0.
         current_pose.pose.position.z = 0.
-        
+
         self.pub.publish(Twist())
-        self.__call_service("/naoqi_driver/tts/say", Say, SayRequest(result["directions"]%result["shopName"]))
+        self.__call_service("/naoqi_driver/tts/say", Say, SayRequest(result["directions"] % result["shopName"]))
         self.set_breathing(True)
         g = MoveBaseGoal()
         g.target_pose = current_pose
@@ -172,10 +179,12 @@ class DescribeRoute(object):
         self.stand()
         self.start_client.send_goal(TrackPersonGoal())
         res = RouteDescriptionResult()
-        res.result.append(ActionResult(cond="described_route__%s__%s" % (goal.shop_id,goal.waypoint), truth_value=True))
-        res.result.append(ActionResult(cond="finished_description__%s__%s" % (goal.shop_id,goal.waypoint), truth_value=False))
+        res.result.append(
+            ActionResult(cond="described_route__%s__%s" % (goal.shop_id, goal.waypoint), truth_value=True))
+        res.result.append(
+            ActionResult(cond="finished_description__%s__%s" % (goal.shop_id, goal.waypoint), truth_value=False))
         self._as.set_succeeded(res)
-        
+
     def transform_pose(self, target_frame, pose):
         while not rospy.is_shutdown() and not self._as.is_preempt_requested():
             try:
@@ -185,16 +194,16 @@ class DescribeRoute(object):
                 return self.listener.transformPose(target_frame, pose)
             except (tf.Exception, tf.LookupException, tf.ConnectivityException) as ex:
                 rospy.logdebug(ex)
-            
+
     def set_breathing(self, flag):
         self.__call_service(
-            "/naoqi_driver/motion/set_breath_enabled", 
-            SetBreathEnabled, 
+            "/naoqi_driver/motion/set_breath_enabled",
+            SetBreathEnabled,
             SetBreathEnabledRequest(SetBreathEnabledRequest.ARMS, flag)
         )
+
 
 if __name__ == "__main__":
     rospy.init_node("describe_route")
     DescribeRoute(rospy.get_name())
     rospy.spin()
-
