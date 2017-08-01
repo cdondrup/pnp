@@ -11,10 +11,8 @@ import yaml
 from actionlib import SimpleActionClient
 from pepper_planning_control.cfg import PepperPlanningControlConfig
 from dynamic_reconfigure.server import Server as DynServer
-from rosplan_knowledge_msgs.srv import KnowledgeQueryService, KnowledgeQueryServiceRequest
-from rosplan_knowledge_msgs.msg import KnowledgeItem
-from rosplan_knowledge_msgs.srv  import GetDomainPredicateDetailsService
-from diagnostic_msgs.msg import KeyValue
+import rosplan_python_utils.knowledge_base_utils as kb
+import pepper_python_utils.service_utils as service_utils
 from nao_interaction_msgs.srv import SetBreathEnabled, SetBreathEnabledRequest
 from nao_interaction_msgs.srv import LocalizationTrigger, LocalizationTriggerRequest
 from nao_interaction_msgs.srv import LocalizationTriggerString, LocalizationTriggerStringRequest
@@ -103,66 +101,7 @@ class PepperController(object):
                 continue
             else:
                 return roslib.message.get_message_class(topic_type[:-4])
-    
-    def _get_predicate_details(self, name):
-        srv_name = "/kcl_rosplan/get_domain_predicate_details"
-        while not rospy.is_shutdown():
-            try:
-                return self.__call_service(
-                    srv_name,
-                    GetDomainPredicateDetailsService,
-                    name
-                )
-            except rospy.ROSInterruptException:
-                rospy.logerr("Communication with '%s' interrupted. Retrying." % srv_name)
-                rospy.sleep(1.)
         
-    def query_knowledgbase(self, predicate):
-        """querry the knowledge base.
-        :param predicate: The condition as a string taken from the PNP.
-        :return (int) -1 (unknown), 0 (false), or 1 (true)
-        """
-        cond = predicate.split("__")
-        srv_name = "/kcl_rosplan/query_knowledge_base"
-        tp = self._get_predicate_details(cond[0]).predicate.typed_parameters
-        if len(tp) != len(cond[1:]):
-            rospy.logerr("Fact '%s' should have %s parameters but has only %s as parsed from: '%s'" % (cond[0], len(tp), len(cond[1:])))
-            return
-        req = KnowledgeQueryServiceRequest()
-        req.knowledge.append(
-            KnowledgeItem(
-                knowledge_type=KnowledgeItem.FACT,
-                attribute_name=cond[0],
-                values=[KeyValue(key=str(k.key), value=str(v)) for k,v in zip(tp, cond[1:])]
-            )
-        )
-        while not rospy.is_shutdown():
-            try:
-                r = self.__call_service(
-                    srv_name,
-                    KnowledgeQueryService,
-                    req
-                )
-            except rospy.ROSInterruptException:
-                rospy.logerr("Communication with '%s' interrupted. Retrying." % srv_name)
-                rospy.sleep(1.)
-            else:
-                return 1 if r.all_true else 0
-                
-    def __call_service(self, srv_name, srv_type, req):
-         while not rospy.is_shutdown():
-            try:
-                s = rospy.ServiceProxy(
-                    srv_name,
-                    srv_type
-                )
-                s.wait_for_service(timeout=1.)
-            except rospy.ROSException, rospy.ServiceException:
-                rospy.logwarn("Could not communicate with '%s' service. Retrying in 1 second." % srv_name)
-                rospy.sleep(1.)
-            else:
-                return s(req)
-                
     def idle(self):
         j = JointAnglesWithSpeed()
         j.joint_names = ['HeadYaw', 'HeadPitch']
@@ -181,7 +120,7 @@ class PepperController(object):
 #    def localise_robot(self, ldir):
 #        if ldir != "":
 #            rospy.loginfo("Loading localisation data from: '%s'" % ldir)
-#            res = self.__call_service(
+#            res = service_utils.call_service(
 #                "/naoqi_driver/localization/load",
 #                LocalizationTriggerString,
 #                LocalizationTriggerStringRequest(self.localisation_dir)
@@ -196,19 +135,19 @@ class PepperController(object):
     def __localise(self, ldir):
         ldir = ldir if ldir != "" else time.strftime("loc_%Y_%m_%d_%H_%M_%S")
         rospy.loginfo("Starting localisation")
-        res = self.__call_service(
+        res = service_utils.call_service(
             "/naoqi_driver/localization/learn_home",
             LocalizationTrigger,
             LocalizationTriggerRequest()
         )
         if res.result != 0:
             rospy.logwarn(self.__get_error_message(res.result))
-        if not self.__call_service("/naoqi_driver/localization/is_data_available", LocalizationCheck, LocalizationCheckRequest()).result:
+        if not service_utils.call_service("/naoqi_driver/localization/is_data_available", LocalizationCheck, LocalizationCheckRequest()).result:
             rospy.logerr("No localisation data available")
             sys.exit(1)
         else:
             rospy.loginfo("Saving localisation data to: '%s'" % ldir)
-            res = self.__call_service(
+            res = service_utils.call_service(
                 "/naoqi_driver/localization/save",
                 LocalizationTriggerString,
                 LocalizationTriggerStringRequest(ldir)
@@ -217,35 +156,35 @@ class PepperController(object):
                 rospy.logwarn(self.__get_error_message(res.result))
                 
     def __get_error_message(self, code):
-        return self.__call_service(
+        return service_utils.call_service(
             "/naoqi_driver/localization/get_message_from_error_code",
             LocalizationGetErrorMessage,
             LocalizationGetErrorMessageRequest(code)
         ).error_message
         
     def set_breathing(self, flag):
-        self.__call_service(
+        service_utils.call_service(
             "/naoqi_driver/motion/set_breath_enabled", 
             SetBreathEnabled, 
             SetBreathEnabledRequest(SetBreathEnabledRequest.ARMS, flag)
         )
         
     def wake_up(self):
-        self.__call_service(
+        service_utils.call_service(
             "/naoqi_driver/motion/wake_up", 
             Empty, 
             EmptyRequest()
         )
         
     def rest(self):
-        self.__call_service(
+        service_utils.call_service(
             "/naoqi_driver/motion/rest", 
             Empty, 
             EmptyRequest()
         )
         
     def stand(self):
-        self.__call_service(
+        service_utils.call_service(
             "/naoqi_driver/robot_posture/go_to_posture", 
             GoToPosture, 
             GoToPostureRequest(GoToPostureRequest.STAND_INIT, 0.5)
@@ -253,7 +192,7 @@ class PepperController(object):
         
     def show_logo(self, flag):
         try:
-            self.__call_service(
+            service_utils.call_service(
                 "/naoqi_driver/behaviour_manager/start_behaviour" if flag else "/naoqi_driver/behaviour_manager/stop_behaviour", 
                 BehaviorManagerControl, 
                 BehaviorManagerControlRequest(name=self.logo_app)
@@ -284,7 +223,7 @@ class PepperController(object):
             action = np.random.choice(self.clients.keys(), p=self.client_probabilities)
             rospy.loginfo("Chose '%s' for execution" % action)
             rospy.loginfo("Checking precondition '%s'" % self.clients[action][PRECONDITION])
-            while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][PRECONDITION]):
+            while not rospy.is_shutdown() and not kb.query(self.clients[action][PRECONDITION]):
                 rospy.sleep(1.0)
             if self.once and cnt >= 1: break
             rospy.loginfo("Starting execution of '%s'" % action)
@@ -296,7 +235,7 @@ class PepperController(object):
                 rospy.sleep(1.0)
             self.stop_idle(t)
             rospy.loginfo("Waiting for goal state to be true")
-            while not rospy.is_shutdown() and not self.query_knowledgbase(self.clients[action][GOAL]):
+            while not rospy.is_shutdown() and not kb.query(self.clients[action][GOAL]):
                 rospy.sleep(1.0)
             rospy.loginfo("Goal '%s' achieved" % self.clients[action][GOAL])
             self.pnp_state = ""
@@ -305,7 +244,7 @@ class PepperController(object):
             
     def __on_shut_down(self):
         self.set_breathing(False)
-#        self.__call_service(
+#        service_utils.call_service(
 #            "/naoqi_driver/localization/stop_all",
 #            Empty,
 #            EmptyRequest()
