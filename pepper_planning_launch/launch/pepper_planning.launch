@@ -12,6 +12,7 @@
     <param name="config_file" type="string" value="$(arg kb_config_file)"/>
   </node>
   <node name="say" pkg="pepper_speak" type="speak.py" output="screen" respawn="true"/>
+  <node name="respond" pkg="pepper_speak" type="respond.py" output="screen" respawn="true"/>
 
   <include file="$(find pepper_move_base)/launch/pepper_move_base.launch">
     <arg name="config_file" value="$(arg move_config_file)" />    

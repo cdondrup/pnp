@@ -57,10 +57,18 @@ tmux select-window -t $SESSION:7
 tmux send-keys "DISPLAY=:0 roslaunch pepper_planning_launch pepper_planning.launch semantic_map_name:=my_map"
 
 tmux select-window -t $SESSION:8
+tmux split-window -v
+tmux select-pane -t 0
 tmux send-keys "DISPLAY=:0 rosrun semantic_map_transform_publisher transform_publisher.py"
+tmux select-pane -t 1
+tmux send-keys "rosservice call /semantic_map_tf/calibrate"
 
 tmux select-window -t $SESSION:9
+tmux split-window -v
+tmux select-pane -t 0
 tmux send-keys "DISPLAY=:0 roslaunch pepper_planning_launch pepper_planning_control.launch"
+tmux select-pane -t 1
+tmux send-keys "rosservice call /planning_world_state_manager/reset_kb"
 
 # Set default window
 tmux select-window -t $SESSION:0

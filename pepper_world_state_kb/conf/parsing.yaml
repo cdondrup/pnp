@@ -7,6 +7,8 @@ static_instances:
   text:
     - arguments:
       - value: "hello"
+    - arguments:
+      - value: "pepper"
   battery_level:
     - arguments:
       - value: "critical"
@@ -71,6 +73,10 @@ static_predicates:
   say_distance:
     - arguments:
       - value: "close"
+      truth_value: true
+  keyword:
+    - arguments:
+      - value: "pepper"
       truth_value: true
 inputs:
   - topic: "/wp2/track"

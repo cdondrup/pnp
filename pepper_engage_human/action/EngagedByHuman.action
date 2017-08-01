@@ -1,0 +1,6 @@
+string interactant_id 
+string text
+string keyword
+---
+pnp_msgs/ActionResult[] result
+---

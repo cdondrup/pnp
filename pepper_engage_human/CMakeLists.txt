@@ -67,7 +67,9 @@ add_action_files(
   FILES
   FindInteractant.action
   EngageHuman.action
+  EngagedByHuman.action
   TerminateInteraction.action
+  TerminateInteractionByUser.action
 )
 
 ## Generate added messages and services with any dependencies listed here
