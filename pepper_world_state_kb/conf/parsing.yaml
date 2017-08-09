@@ -74,6 +74,9 @@ static_predicates:
     - arguments:
       - value: "close"
       truth_value: true
+    - arguments:
+      - value: "far"
+      truth_value: true
   keyword:
     - arguments:
       - value: "pepper"
