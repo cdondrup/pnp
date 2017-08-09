@@ -7,3 +7,7 @@ disengage:
   predicate: "free_interactant_id"
   parameters:
     - "iid_0"
+promote_shop_1:
+  predicate: "promoted_product"
+  parameters:
+    - "sid_1"

@@ -39,10 +39,12 @@ class GoalServer(object):
             rospy.sleep(goal.timeout)
             self.add_goal(self.planning_goal)
             cnt += 1
+
+        if self._as.is_preempt_requested():
+            self.client.cancel_all_goals()
+            self._as.set_preempted()
         else:
-            self._as.set_aborted()
-            return
-        self._as.set_succeeded()
+            self._as.set_succeeded()
         
     def add_goal(self, goal):
         gu.clear_all()

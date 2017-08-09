@@ -24,6 +24,7 @@ from nao_interaction_msgs.msg import PersonDetectedArray
 from naoqi_bridge_msgs.msg import JointAnglesWithSpeed 
 from std_srvs.srv import Empty, EmptyRequest
 from std_msgs.msg import String
+from actionlib_msgs.msg import GoalStatus
 from collections import OrderedDict
 import numpy as np
 from threading import Thread
@@ -40,7 +41,6 @@ class PepperController(object):
         rospy.on_shutdown(self.__on_shut_down)
         self.pnp_state = ""
         rospy.Subscriber("/rosplan_bridge/current_state", String, self.callback)
-        DynServer(PepperPlanningControlConfig, self.dyn_callback)
         with open(rospy.get_param("~config_file"), 'r') as f:
             config = yaml.load(f)
         print config
@@ -57,10 +57,12 @@ class PepperController(object):
                 ACTIONGOAL: self.get_goal_type(v["topic"])(*v["parameters"]),
                 PRECONDITION: v["precondition"]
             }
+            print self.clients[k][ACTIONGOAL]
             rospy.loginfo("Waiting for '%s' server" % v["topic"])
             self.clients[k][CLIENT].wait_for_server()
             self.client_probabilities.append(v["probability"])
             rospy.loginfo("Connected to '%s' server" % v["topic"])
+        DynServer(PepperPlanningControlConfig, self.dyn_callback)
         rospy.loginfo("... done")
         
     def callback(self, msg):
@@ -71,7 +73,12 @@ class PepperController(object):
         self.pitch_range = config["pitch_range"]
         self.pitch_offset = config["pitch_offset"]
         self.yaw_range = config["yaw_range"]
-        print config
+        for i, (k, c) in enumerate(self.clients.items()):
+            config["action_%s" % i] = k
+            self.client_probabilities[i] = 1. if config["run_action_%s" % i] else 0.
+            c[CLIENT].cancel_all_goals()
+        self.client_probabilities = np.array(self.client_probabilities)*1./np.sum(self.client_probabilities)
+        print self.client_probabilities
         return config
         
     def get_goal_type(self, action_name):
@@ -233,7 +240,12 @@ class PepperController(object):
                 rospy.loginfo("Executing '%s'" % action)
                 self.clients[action][CLIENT].send_goal_and_wait(self.clients[action][ACTIONGOAL])
                 rospy.sleep(1.0)
+                if self.clients[action][CLIENT].get_state() == GoalStatus.PREEMPTED:
+                    break
             self.stop_idle(t)
+            if self.clients[action][CLIENT].get_state() == GoalStatus.PREEMPTED:
+                rospy.loginfo("Goal server has been preempted.")
+                continue
             rospy.loginfo("Waiting for goal state to be true")
             while not rospy.is_shutdown() and not kb.query(self.clients[action][GOAL]):
                 rospy.sleep(1.0)

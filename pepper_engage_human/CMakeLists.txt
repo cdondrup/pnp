@@ -68,6 +68,7 @@ add_action_files(
   FindInteractant.action
   EngageHuman.action
   EngagedByHuman.action
+  PromoteProduct.action
   TerminateInteraction.action
   TerminateInteractionByUser.action
 )

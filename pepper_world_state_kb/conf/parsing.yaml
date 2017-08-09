@@ -64,6 +64,10 @@ static_predicates:
     - arguments:
       - value: "iid_0"
       truth_value: true
+  free_promotion_id:
+    - arguments:
+      - value: "iid_0"
+      truth_value: true
   robot_at_home:
     truth_value: true
   robot_at_waypoint:
