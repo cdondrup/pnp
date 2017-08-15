@@ -120,7 +120,7 @@ class DescribeRoute(object):
         shop_id = goal.shop_id.split('_')[1]
         result = self.db[self.collection_name].find_one(
             {
-                "shop_id": shop_id,
+                "id": int(shop_id),
                 "semantic_map_name": self.semantic_map_name
             }
         )
@@ -135,8 +135,8 @@ class DescribeRoute(object):
 
         loc = PoseStamped()
         loc.header.frame_id = "semantic_map"
-        loc.pose.position.x = float(result["loc_x"])
-        loc.pose.position.y = float(result["loc_y"])
+        loc.pose.position.x = float(result["location"]["x"])
+        loc.pose.position.y = float(result["location"]["y"])
 
         target = self.transform_pose(DescribeRoute.BASE_LINK, loc)
         t = TrackerPointAtRequest()
@@ -171,7 +171,7 @@ class DescribeRoute(object):
         current_pose.pose.position.z = 0.
 
         self.pub.publish(Twist())
-        self.__call_service("/naoqi_driver/tts/say", Say, SayRequest(result["directions"] % result["shopName"]))
+        self.__call_service("/naoqi_driver/tts/say", Say, SayRequest(result["location"]["directions"].format(**result)))
         self.set_breathing(True)
         g = MoveBaseGoal()
         g.target_pose = current_pose
