@@ -1,13 +1,29 @@
 engage:
-  predicate: "engaged"
-  parameters:
-    - "iid_0"
-    - "hello"
+  sub_goals:
+    - predicate: "engaged"
+      parameters:
+        - "iid_0"
+        - "hello"
 disengage:
-  predicate: "free_interactant_id"
-  parameters:
-    - "iid_0"
+  sub_goals:
+    - predicate: "free_interactant_id"
+      parameters:
+        - "iid_0"
 promote_shop_1:
-  predicate: "promoted_product"
-  parameters:
-    - "sid_1"
+  sub_goals:
+    - predicate: "promoted_product"
+      parameters:
+        - "sid_1"
+charge_robot:
+  sub_goals:
+    - predicate: "charging"
+      parameters:
+        - "iid_0"
+undock_robot:
+  sub_goals:
+    - predicate: "not_charging"
+      parameters:
+        - "iid_0"
+    - predicate: "robot_at_waypoint"
+      parameters:
+        - "home"

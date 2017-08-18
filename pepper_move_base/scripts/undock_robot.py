@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
+import rospy
+from actionlib import SimpleActionClient
+from pepper_move_base.msg import TrackPersonAction, TrackPersonGoal
+from pnp_plugin_server.pnp_simple_plugin_server import PNPSimplePluginServer
+from pepper_move_base.msg import UndockRobotAction, UndockRobotResult
+from pnp_msgs.msg import ActionResult
+from nao_interaction_msgs.srv import Recharge, RechargeRequest
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+
+
+class UndockRobot(object):
+    def __init__(self, name):
+        rospy.loginfo("Starting %s ..." % name)
+        self._ps = PNPSimplePluginServer(
+            name=name,
+            ActionSpec=UndockRobotAction,
+            execute_cb=self.execute_cb,
+            auto_start=False
+        )
+        rospy.loginfo("Creating tracker client")
+        self.stop_client = SimpleActionClient("/stop_tracking_person", TrackPersonAction)
+        self.stop_client.wait_for_server()
+        rospy.loginfo("Tracker client connected")
+        self.client = SimpleActionClient("move_base", MoveBaseAction)
+        rospy.loginfo("Waiting for move_base client.")
+        self.client.wait_for_server()
+        rospy.loginfo("Move base client connected")
+        self._ps.start()
+        rospy.loginfo("... done")
+
+    def execute_cb(self, goal):
+        self.stop_client.send_goal(TrackPersonGoal())
+        
+        while not self.__call_service("/naoqi_driver/recharge/leave_station", Recharge, RechargeRequest()):
+            rospy.logwarn("Undocking failed. Retrying...")
+            rospy.sleep(1.)
+
+        res = UndockRobotResult()
+        res.result.append(ActionResult(cond="charging__%s" % goal.interactant_id, truth_value=False))
+        res.result.append(ActionResult(cond="not_charging__%s" % goal.interactant_id, truth_value=True))
+
+        self._ps.set_succeeded(res)
+
+    def __call_service(self, srv_name, srv_type, req):
+         while not rospy.is_shutdown():
+            try:
+                s = rospy.ServiceProxy(
+                    srv_name,
+                    srv_type
+                )
+                s.wait_for_service(timeout=1.)
+            except rospy.ROSException:
+                rospy.logwarn("Could not communicate with '%s' service. Retrying in 1 second." % srv_name)
+                rospy.sleep(1.)
+            else:
+                return s(req)
+
+
+if __name__ == "__main__":
+    rospy.init_node("undock_robot")
+    UndockRobot(rospy.get_name())
+    rospy.spin()
+

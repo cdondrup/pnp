@@ -1,0 +1,5 @@
+string interactant_id
+string waypoint
+---
+pnp_msgs/ActionResult[] result
+---

@@ -27,7 +27,10 @@ class PeopleTracking(object):
         PeopleTracking.sub = rospy.Subscriber("/naoqi_driver_node/people_detected", PersonDetectedArray, self.callback, queue_size=1)
         
     def stop(self):
-        PeopleTracking.sub.unregister()
+        try:
+            PeopleTracking.sub.unregister()
+        except AttributeError:
+            pass
         self.pub.publish(Twist())
         
     def callback(self, msg):

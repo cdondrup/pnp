@@ -71,6 +71,8 @@ add_action_files(
   TrackPerson.action
   GoHome.action
   MoveToWaypoint.action
+  ChargeRobot.action
+  UndockRobot.action
 )
 
 ## Generate added messages and services with any dependencies listed here

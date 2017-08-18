@@ -8,4 +8,6 @@
   <node pkg="pepper_move_base" type="track_person.py" name="track_person" output="screen" respawn="true"/>
   <node pkg="pepper_move_base" type="go_home.py" name="go_home" output="screen" respawn="true"/>
   <node pkg="pepper_move_base" type="move_to_waypoint.py" name="move_to_waypoint" output="screen" respawn="true"/>
+  <node pkg="pepper_move_base" type="charge_robot.py" name="charge_robot" output="screen" respawn="true"/>
+  <node pkg="pepper_move_base" type="undock_robot.py" name="undock_robot" output="screen" respawn="true"/>
 </launch>

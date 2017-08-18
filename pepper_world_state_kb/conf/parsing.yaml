@@ -59,6 +59,10 @@ static_instances:
       - value: "waypoint3"
     - arguments:
       - value: "none"
+    - arguments:
+      - value: "chargingstation"
+    - arguments:
+      - value: "home"
 static_predicates:
   free_interactant_id:
     - arguments:
@@ -84,6 +88,14 @@ static_predicates:
   keyword:
     - arguments:
       - value: "pepper"
+      truth_value: true
+  not_charging:
+    - arguments:
+      - value: "iid_0"
+      truth_value: true
+  charging_waypoint:
+    - arguments:
+      - value: "chargingstation"
       truth_value: true
 inputs:
   - topic: "/wp2/track"
