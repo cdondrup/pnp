@@ -97,6 +97,10 @@ static_predicates:
     - arguments:
       - value: "chargingstation"
       truth_value: true
+  charged_level:
+    - arguments:
+      - value: "full"
+      truth_value: true
 inputs:
   - topic: "/wp2/track"
     base_attribute: "data"
@@ -172,10 +176,6 @@ inputs:
     base_attribute: ""
     data:
       predicates:
-        charging:
-          truth_value:
-            attribute: "charging"
-            comparison: "$attribute == True"
         hatch_closed:
           truth_value:
             attribute: "hatch_open"
