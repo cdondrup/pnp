@@ -11,6 +11,8 @@ from rosplan_knowledge_msgs.srv import GetDomainPredicateDetailsService, GetInst
 from std_srvs.srv import Empty, EmptyResponse, EmptyRequest
 import yaml
 from operator import attrgetter
+from threading import Thread
+from Queue import Queue
 
 
 class PlanningWorldState(object):
@@ -34,19 +36,23 @@ class PlanningWorldState(object):
         self.update_knowledgebase(predicates=f, truth_value=0)
         rospy.loginfo("Starting reset service")
         self.srv = rospy.Service("~reset_kb", Empty, lambda x:self.reset_cb(x, config))
-        self.subscribers = []
+        self.subscribers = Queue()
         for inputs in config["inputs"]:
-            rospy.loginfo("Subsribing to '%s'." % inputs["topic"])
-            self.__last_request[inputs["topic"]] = {0: [], 1: []}
-            self.subscribers.append(
-                rospy.Subscriber(
-                    name=inputs["topic"], 
-                    data_class=rostopic.get_topic_class(inputs["topic"], blocking=True)[0], 
-                    callback=self.callback,
-                    callback_args=inputs
-                )
-            )
+            thread = Thread(target=self.subscribe, args=(inputs, self.subscribers))
+            thread.start()
         rospy.loginfo("... done")
+
+    def subscribe(self, inputs, sub_queue):
+        rospy.loginfo("Subsribing to '%s'." % inputs["topic"])
+        self.__last_request[inputs["topic"]] = {0: [], 1: []}
+        sub_queue.put(
+            rospy.Subscriber(
+                name=inputs["topic"],
+                data_class=rostopic.get_topic_class(inputs["topic"], blocking=True)[0],
+                callback=self.callback,
+                callback_args=inputs
+            )
+        )
         
     def reset_cb(self, msg, config):
         rospy.loginfo("Resetting knowledge base. Clearing current knowledge.")
@@ -151,13 +157,13 @@ class PlanningWorldState(object):
                     ))
 
         if predicates != None:
-            predicates = [predicates] if not isinstance(predicates,list) else predicates
+            predicates = [predicates] if not isinstance(predicates, list) else predicates
             for p in predicates:
                 rospy.logdebug("Updating %s %s" % (str(p), str(truth_value)))
                 if not p[0] in self.__tp:
                     self.__tp[p[0]] = self._get_predicate_details(p[0]).predicate.typed_parameters
                 if len(self.__tp[p[0]]) != len(p[1]):
-                    rospy.logerr("Fact '%s' should have %s parameters but has only %s as parsed from: '%s'" % (p[0], len(self.__tp[p[0]]), len(p[1])))
+                    rospy.logerr("Fact '%s' should have %s parameters but has only %s as parsed from: '%s'" % (p[0], len(self.__tp[p[0]]), len(p[1]), p))
                     return
                 
                 req.knowledge.append(KnowledgeItem(
