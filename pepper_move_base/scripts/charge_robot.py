@@ -10,6 +10,7 @@ from pepper_move_base.msg import ChargeRobotAction, ChargeRobotResult
 from pnp_msgs.msg import ActionResult
 from nao_interaction_msgs.srv import Recharge, RechargeRequest
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from nao_interaction_msgs.msg import BatteryInfo
 
 
 class ChargeRobot(object):
@@ -34,10 +35,15 @@ class ChargeRobot(object):
 
     def execute_cb(self, goal):
         self.stop_client.send_goal(TrackPersonGoal())
-        
-        while not self.__call_service("/naoqi_driver/recharge/go_to_station", Recharge, RechargeRequest()):
-            rospy.logwarn("Docking failed. Retrying...")
+
+        self.__call_service("/naoqi_driver/recharge/go_to_station", Recharge, RechargeRequest())
+
+        while not rospy.is_shutdown():
+            if rospy.wait_for_message("/naoqi_driver_node/battery", BatteryInfo).charging:
+                break
             rospy.sleep(1.)
+
+        print "Done"
 
         res = ChargeRobotResult()
         res.result.append(ActionResult(cond="charging__%s" % goal.interactant_id, truth_value=True))

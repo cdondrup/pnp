@@ -1,4 +1,5 @@
 string interactant_id
+string battery_level
 ---
 pnp_msgs/ActionResult[] result
 ---

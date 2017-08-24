@@ -262,7 +262,7 @@ class PepperController(object):
 #            EmptyRequest()
 #        )
         self.show_logo(False)
-        self.rest()
+        # self.rest()
 
 
 if __name__ == "__main__":
