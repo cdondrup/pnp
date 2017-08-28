@@ -90,8 +90,8 @@ class StartStopPeopleTracking(PeopleTracking):
             self.id = goal.id.split('_')[1]
         else:
             self.id = rospy.wait_for_message("/naoqi_driver_node/people_detected", PersonDetectedArray).person_array[0].id
-        if not goal.no_turn:
-            self.start()
+        # if not goal.no_turn: # No turning for now.
+        #     self.start()
         req = SetTrackerTargetRequest()
         req.target = req.PEOPLE
         req.values.append(float(self.id))
