@@ -44,7 +44,7 @@ tmux select-pane -t 0
 tmux send-keys "ssh nao@pepper 'source /etc/profile; source /home/nao/.bash_profile; /home/nao/ASR.sh'"
 tmux resize-pane -U 30
 tmux select-pane -t 1
-tmux send-keys "DISPLAY=:0 roslaunch naoqi_navigation navigation_full.launch"
+tmux send-keys "DISPLAY=:0 roslaunch naoqi_navigation navigation_full.launch network_interface:=eno1 path_to_map:=/home/nao/maps/office.explo"
 tmux select-pane -t 0
 
 tmux select-window -t $SESSION:3
@@ -61,11 +61,11 @@ tmux split-window -v
 tmux select-pane -t 0
 tmux send-keys "DISPLAY=:0 sh ~/mummer_alexa/start_alana.sh"
 tmux select-pane -t 1
-tmux send-keys "DISPLAY=:0 roslaunch mummer_dialogue_launch mummer_dialogue.launch semantic_map_name:=my_map"
+tmux send-keys "DISPLAY=:0 roslaunch mummer_dialogue_launch mummer_dialogue.launch semantic_map_name:=marg_map"
 tmux select-pane -t 0
 
 tmux select-window -t $SESSION:7
-tmux send-keys "DISPLAY=:0 roslaunch pepper_planning_launch pepper_planning.launch semantic_map_name:=my_map"
+tmux send-keys "DISPLAY=:0 roslaunch pepper_planning_launch pepper_planning.launch semantic_map_name:=marg_map"
 
 tmux select-window -t $SESSION:8
 tmux split-window -v
