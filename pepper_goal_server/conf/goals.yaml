@@ -9,11 +9,11 @@ disengage:
     - predicate: "free_interactant_id"
       parameters:
         - "iid_0"
-promote_shop_1:
+promote_product_1:
   sub_goals:
     - predicate: "promoted_product"
       parameters:
-        - "sid_1"
+        - "pid_1"
 charge_robot:
   sub_goals:
     - predicate: "charging"

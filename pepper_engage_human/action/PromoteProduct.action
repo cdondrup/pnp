@@ -1,4 +1,4 @@
-string shop_id
+string product_id
 string interactant_id
 string id
 ---

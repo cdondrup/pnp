@@ -50,6 +50,33 @@ static_instances:
       - value: "sid_11"
     - arguments:
       - value: "sid_12"
+  product_id:
+    - arguments:
+      - value: "pid_0"
+    - arguments:
+      - value: "pid_1"
+    - arguments:
+      - value: "pid_2"
+    - arguments:
+      - value: "pid_3"
+    - arguments:
+      - value: "pid_4"
+    - arguments:
+      - value: "pid_5"
+    - arguments:
+      - value: "pid_6"
+    - arguments:
+      - value: "pid_7"
+    - arguments:
+      - value: "pid_8"
+    - arguments:
+      - value: "pid_9"
+    - arguments:
+      - value: "pid_10"
+    - arguments:
+      - value: "pid_11"
+    - arguments:
+      - value: "pid_12"
   waypoint:
     - arguments:
       - value: "waypoint1"

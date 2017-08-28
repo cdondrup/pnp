@@ -26,11 +26,11 @@ class PromoteProduct(object):
         rospy.loginfo("... done")
 
     def execute_cb(self, goal):
-        rospy.loginfo("promoting product '%s'" % (goal.shop_id,))
-        self.client.send_goal_and_wait(GiveVoucherGoal(shop_id=int(goal.shop_id.split('_')[1])))
+        rospy.loginfo("promoting product '%s'" % (goal.product_id,))
+        self.client.send_goal_and_wait(GiveVoucherGoal(product=goal.product_id))
         res = PromoteProductResult()
         res.result.append(ActionResult(cond="free_promotion_id__%s" % goal.interactant_id, truth_value=True))
-        res.result.append(ActionResult(cond="promoted_product__%s" % goal.shop_id, truth_value=True))
+        res.result.append(ActionResult(cond="promoted_product__%s" % goal.product_id, truth_value=True))
         res.result.append(ActionResult(cond="found_promotion__%s__%s" % (goal.interactant_id, goal.id), truth_value=False))
         if self._ps.is_preempt_requested():
             self._ps.set_preempted()
